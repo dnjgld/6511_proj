@@ -8,6 +8,8 @@ import maps
 import map_loader
 import special_effects
 import numpy as np
+import random
+import time
 """
 修改时间：2021.12.15
 修改人：2019051604048 詹孝东
@@ -1204,45 +1206,391 @@ class Game:
 
             self.clock.tick(60)
 
-    # Get the current game state
-    def get_game_state(self):
-        state = []
-        
-        # tank1 position (normalized to 0-1)
-        state.append(self.myTank_T1.rect.left / 630)
-        state.append(self.myTank_T1.rect.top / 630)
+    def game_running_ai_play(self, agent, isEndless=False):
+        """
+        AI play function 
+        """
+        print("\n=== AI Play Start ===")
 
-        # tank1 life
-        state.append(self.myTank_T1.life / 3)
+        # initialize game state
+        self.allTankGroup.empty()
+        self.mytankGroup.empty()
+        self.allEnemyGroup.empty()
+        self.redEnemyGroup.empty()
+        self.greenEnemyGroup.empty()
+        self.otherEnemyGroup.empty()
+        self.enemyBulletGroup.empty()
+        self.bgMap.brickGroup.empty()
+        self.bgMap.ironGroup.empty()
+        self.bgMap.riverGroup.empty()
+        self.bgMap.iceGroup.empty()
+        self.bgMap.homeGroup.empty()
+        self.bgMap.treeGroup.empty()
+        self.bulletBoomGroup.clear()
+        self.prop.life = 0  
 
-        # current enemy proportion left (0-1)
-        state.append(len(self.allEnemyGroup) / 20)
+        self.overGameLoss = False
+        self.overGameWin = False
+        self.enemyCouldMove = True
+        self.invincible_T1 = 0
+        self.invincible_T2 = 0
+        self.iron_time = 0
+        self.delay = 100
 
-        # 
-        state.append(1 if self.prop.life else 0)
+        self.isEndless = isEndless
+        map_num = [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ]
+        checkpoint = random.randint(26, 35)
+        self.bgMap.checkpoint(checkpoint, map_num)
+        for i in range(1, 4):
+            enemy = enemyTank.EnemyTank(i)
+            self.allTankGroup.add(enemy)
+            self.allEnemyGroup.add(enemy)
+            if enemy.isred:
+                self.redEnemyGroup.add(enemy)
+            elif enemy.kind == 3:
+                self.greenEnemyGroup.add(enemy)
+            else:
+                self.otherEnemyGroup.add(enemy)
+        self.myTank_T2.life = 0
+        self.myTank_T1.life = 3
+        self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 24 * 24
+        self.overGameLoss = False
+        self.overGameWin = False
+        self.enemyCouldMove = True
+        self.remaining_enemy = len(self.allEnemyGroup)
+        self.enemyNumber = len(self.allEnemyGroup)
+        self.invincible_T1 = 0
+        self.invincible_T2 = 0
+        self.iron_time = 0
 
-        return np.array(state, dtype=np.float32)
+        done = False
+        while not done:
+            self.event_section() 
 
+            # AI decision making
+            state = [
+                self.myTank_T1.rect.left / 630,
+                self.myTank_T1.rect.top / 630,
+                self.myTank_T1.life / 3,
+                len(self.allEnemyGroup) / 20,
+                1 if self.prop.life else 0
+            ]
+            state = np.array(state, dtype=np.float32).reshape(1, -1)
+            action = agent.act(state)
+
+            # AI action execution
+            self.execute_action(action)
+
+            # Enemy movement
+            for each in self.allEnemyGroup:
+                if self.enemyCouldMove:
+                    self.allTankGroup.remove(each)
+                    each.move(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+                    self.allTankGroup.add(each)
+
+            # bullet and prop section
+            self.bullet_section()
+            self.props_section()
+
+            # Check for game over conditions
+            if self.remaining_enemy == 0:
+                self.overGameWin = True
+                print("AI获胜！")
+                done = True
+            elif self.overGameLoss or self.myTank_T1.life <= 0:
+                print("AI失败！")
+                done = True
+
+            # render the game screen
+            self.screen.blit(self.background_image, (0, 0))
+            self.screen.blit(self.background_image_level_mode, (630, 0))
+            for each in self.bgMap.brickGroup:
+                self.screen.blit(each.image, each.rect)
+            for each in self.bgMap.ironGroup:
+                self.screen.blit(each.image, each.rect)
+            for each in self.bgMap.riverGroup:
+                self.screen.blit(each.image, each.rect)
+            for each in self.bgMap.iceGroup:
+                self.screen.blit(each.image, each.rect)
+            for each in self.bgMap.homeGroup:
+                self.screen.blit(each.image, each.rect)
+
+            if not self.isEndless:
+                for i in range(0, self.remaining_enemy):
+                    if i < 10:
+                        x = 630 + 25
+                        y = 80 + i * 30
+                        self.screen.blit(self.enemy_icon, (x, y))
+                    else:
+                        x = 630 + 65
+                        y = 80 + (i - 10) * 30
+                        self.screen.blit(self.enemy_icon, (x, y))
+                for i in range(0, self.myTank_T1.life):
+                    x = 680 + i * 20
+                    self.screen.blit(self.heart_icon, (x, 378 + 5))
+                for i in range(0, self.myTank_T2.life):
+                    x = 680 + i * 20
+                    self.screen.blit(self.heart_icon, (x, 378 + 55))
+
+            self.tank_display_section()
+            for each in self.bgMap.treeGroup:
+                self.screen.blit(each.image, each.rect)
+            for each in self.bulletBoomGroup:
+                if each.times > 0:
+                    each.times -= 1
+                    if each.times % 10 == 0:
+                        self.special_effect.SE_boom(self.screen, each.x, each.y, each.times)
+                else:
+                    self.bulletBoomGroup.remove(each)
+            self.props_section()
+
+            self.delay -= 1
+            if not self.delay:
+                self.delay = 100
+            pygame.display.flip()
+            self.clock.tick(60)
+
+        print("AI Play End")
+
+    def game_running_ai_trainning(self, agent, episodes=50, batch_size=8, isEndless=False):
+        for episode in range(episodes):
+            print(f"\n=== Episode {episode + 1}/{episodes} ===")
+
+            self.allTankGroup.empty()
+            self.mytankGroup.empty()
+            self.allEnemyGroup.empty()
+            self.redEnemyGroup.empty()
+            self.greenEnemyGroup.empty()
+            self.otherEnemyGroup.empty()
+            self.enemyBulletGroup.empty()
+            self.bgMap.brickGroup.empty()
+            self.bgMap.ironGroup.empty()
+            self.bgMap.riverGroup.empty()
+            self.bgMap.iceGroup.empty()
+            self.bgMap.homeGroup.empty()
+            self.bgMap.treeGroup.empty()
+            self.bulletBoomGroup.clear()
+            self.prop.life = 0  
+
+            self.overGameLoss = False
+            self.overGameWin = False
+            self.enemyCouldMove = True
+            self.invincible_T1 = 0
+            self.invincible_T2 = 0
+            self.iron_time = 0
+            self.delay = 100
+
+            self.isEndless = isEndless
+            
+            map_num = [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            ]
+            
+            checkpoint = random.randint(1, 25)
+            self.bgMap.checkpoint(checkpoint, map_num)
+            for i in range(1, 4):
+                enemy = enemyTank.EnemyTank(i)
+                self.allTankGroup.add(enemy)
+                self.allEnemyGroup.add(enemy)
+                if enemy.isred:
+                    self.redEnemyGroup.add(enemy)
+                elif enemy.kind == 3:
+                    self.greenEnemyGroup.add(enemy)
+                else:
+                    self.otherEnemyGroup.add(enemy)
+            self.myTank_T2.life = 0
+            self.myTank_T1.life = 3
+            self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 24 * 24
+            self.overGameLoss = False
+            self.overGameWin = False
+            self.enemyCouldMove = True
+            self.remaining_enemy = len(self.allEnemyGroup)
+            self.enemyNumber = len(self.allEnemyGroup)
+            self.invincible_T1 = 0
+            self.invincible_T2 = 0
+            self.iron_time = 0
+
+            total_reward = 0
+            done = False
+            train_step = 0
+
+            while not done:
+                self.event_section()
+                print("AI decision making...")
+
+                state = [
+                    self.myTank_T1.rect.left / 630,
+                    self.myTank_T1.rect.top / 630,
+                    self.myTank_T1.life / 3,
+                    len(self.allEnemyGroup) / 20,
+                    1 if self.prop.life else 0
+                ]
+                state = np.array(state, dtype=np.float32).reshape(1, -1)
+                action = agent.act(state)
+
+                print("AI action execution...")
+                self.execute_action(action)
+
+                print("Enemy movement...")
+                for each in self.allEnemyGroup:
+                    if self.enemyCouldMove:
+                        self.allTankGroup.remove(each)
+                        each.move(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+                        self.allTankGroup.add(each)
+
+                self.bullet_section()
+                self.props_section()
+
+                reward = 0
+                if self.remaining_enemy == 0:
+                    self.overGameWin = True
+
+                if self.overGameWin:
+                    reward = 10
+                    done = True
+                elif self.overGameLoss or self.myTank_T1.life <= 0:
+                    reward = -10
+                    done = True
+                elif self.prop.life == 0:
+                    reward = 1
+
+                next_state = [
+                    self.myTank_T1.rect.left / 630,
+                    self.myTank_T1.rect.top / 630,
+                    self.myTank_T1.life / 3,
+                    len(self.allEnemyGroup) / 20,
+                    1 if self.prop.life else 0
+                ]
+                next_state = np.array(next_state, dtype=np.float32).reshape(1, -1)
+                agent.remember(state, action, reward, next_state, done)
+                
+                train_step += 1
+                if train_step % 50 == 0:  # 每10帧训练一次，可根据需要调整
+                    agent.replay(batch_size)
+                total_reward += reward
+
+                self.screen.blit(self.background_image, (0, 0))
+                self.screen.blit(self.background_image_level_mode, (630, 0))
+                for each in self.bgMap.brickGroup:
+                    self.screen.blit(each.image, each.rect)
+                for each in self.bgMap.ironGroup:
+                    self.screen.blit(each.image, each.rect)
+                for each in self.bgMap.riverGroup:
+                    self.screen.blit(each.image, each.rect)
+                for each in self.bgMap.iceGroup:
+                    self.screen.blit(each.image, each.rect)
+                for each in self.bgMap.homeGroup:
+                    self.screen.blit(each.image, each.rect)
+                    
+                if not self.isEndless:
+                    for i in range(0, self.remaining_enemy):
+                        if i < 10:
+                            x = 630 + 25
+                            y = 80 + i * 30
+                            self.screen.blit(self.enemy_icon, (x, y))
+                        else:
+                            x = 630 + 65
+                            y = 80 + (i - 10) * 30
+                            self.screen.blit(self.enemy_icon, (x, y))
+                    for i in range(0, self.myTank_T1.life):
+                        x = 680 + i * 20
+                        self.screen.blit(self.heart_icon, (x, 378 + 5))
+                    for i in range(0, self.myTank_T2.life):
+                        x = 680 + i * 20
+                        self.screen.blit(self.heart_icon, (x, 378 + 55))
+
+                self.tank_display_section()
+                for each in self.bgMap.treeGroup:
+                    self.screen.blit(each.image, each.rect)
+                for each in self.bulletBoomGroup:
+                    if each.times > 0:
+                        each.times -= 1
+                        if each.times % 10 == 0:
+                            self.special_effect.SE_boom(self.screen, each.x, each.y, each.times)
+                    else:
+                        self.bulletBoomGroup.remove(each)
+                self.props_section()
+                
+                self.delay -= 1
+                if not self.delay:
+                    self.delay = 100
+                pygame.display.flip()
+                self.clock.tick(60)
+                
+            print(f"Episode {episode + 1} finished. Total reward: {total_reward}")
+
+        agent.model.save("tank_dqn_final.h5")
+        print("Final model saved.")
 
     # update the game state based on the action taken
-    def update_game_with_action(self, action):
-        # remove the tank from the group to avoid collision detection
+    def execute_action(self, action, repeat=1):
         self.allTankGroup.remove(self.myTank_T1)
-
-        if action == 0:  # up
-            self.myTank_T1.moveUp(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-        elif action == 1:  # down
-            self.myTank_T1.moveDown(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-        elif action == 2:  # left
-            self.myTank_T1.moveLeft(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-        elif action == 3:  # right
-            self.myTank_T1.moveRight(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-        elif action == 4:  # shoot
-            if not self.myTank_T1.bullet.life and self.myTank_T1.bulletNotCooling:
-                if self.isSoundEffect:
-                    self.attack_sound.play()
-                self.myTank_T1.shoot()
-                self.myTank_T1.bulletNotCooling = False
-
-        # add the tank back to the group for collision detection
+        for _ in range(repeat):
+            if action == 0:
+                self.myTank_T1.moveUp(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+            elif action == 1:
+                self.myTank_T1.moveDown(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+            elif action == 2:
+                self.myTank_T1.moveLeft(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+            elif action == 3:
+                self.myTank_T1.moveRight(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+            elif action == 4:
+                if not self.myTank_T1.bullet.life and self.myTank_T1.bulletNotCooling:
+                    if self.isSoundEffect:
+                        self.attack_sound.play()
+                    self.myTank_T1.shoot()
+                    self.myTank_T1.bulletNotCooling = False
+            time.sleep(0.01)  # 模拟帧延迟
         self.allTankGroup.add(self.myTank_T1)
