@@ -7,6 +7,7 @@ import food
 import maps
 import map_loader
 import special_effects
+import numpy as np
 """
 修改时间：2021.12.15
 修改人：2019051604048 詹孝东
@@ -1202,3 +1203,46 @@ class Game:
             pygame.display.flip()
 
             self.clock.tick(60)
+
+    # Get the current game state
+    def get_game_state(self):
+        state = []
+        
+        # tank1 position (normalized to 0-1)
+        state.append(self.myTank_T1.rect.left / 630)
+        state.append(self.myTank_T1.rect.top / 630)
+
+        # tank1 life
+        state.append(self.myTank_T1.life / 3)
+
+        # current enemy proportion left (0-1)
+        state.append(len(self.allEnemyGroup) / 20)
+
+        # 
+        state.append(1 if self.prop.life else 0)
+
+        return np.array(state, dtype=np.float32)
+
+
+    # update the game state based on the action taken
+    def update_game_with_action(self, action):
+        # remove the tank from the group to avoid collision detection
+        self.allTankGroup.remove(self.myTank_T1)
+
+        if action == 0:  # up
+            self.myTank_T1.moveUp(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 1:  # down
+            self.myTank_T1.moveDown(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 2:  # left
+            self.myTank_T1.moveLeft(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 3:  # right
+            self.myTank_T1.moveRight(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 4:  # shoot
+            if not self.myTank_T1.bullet.life and self.myTank_T1.bulletNotCooling:
+                if self.isSoundEffect:
+                    self.attack_sound.play()
+                self.myTank_T1.shoot()
+                self.myTank_T1.bulletNotCooling = False
+
+        # add the tank back to the group for collision detection
+        self.allTankGroup.add(self.myTank_T1)
