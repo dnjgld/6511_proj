@@ -1,5 +1,4 @@
-Initial game code: https://github.com/IronSpiderMan/TankWar
+# pygame-TankWar
+Github website: https://github.com/HelloZhan/pygame-TankWar
 
-pygame website：https://www.pygame.org/docs/
-
-
+Introduction Website: https://blog.csdn.net/qq_46470984/article/details/122003755
