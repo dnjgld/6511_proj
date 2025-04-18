@@ -11,13 +11,13 @@ import random
 class Food(pygame.sprite.Sprite):
     def __init__(self):
         # 加载每个道具的图片
-        self.food_boom = pygame.image.load(r"image\food\food_boom.png").convert_alpha()
-        self.food_clock = pygame.image.load(r"image\food\food_clock.png").convert_alpha()
-        self.food_gun = pygame.image.load(r"image\food\food_gun.png").convert_alpha()
-        self.food_iron = pygame.image.load(r"image\food\food_iron.png").convert_alpha()
-        self.food_protect = pygame.image.load(r"image\food\food_protect.png").convert_alpha()
-        self.food_star = pygame.image.load(r"image\food\food_star.png").convert_alpha()
-        self.food_tank = pygame.image.load(r"image\food\food_tank.png").convert_alpha()
+        self.food_boom = pygame.image.load(r"image/food/food_boom.png").convert_alpha()
+        self.food_clock = pygame.image.load(r"image/food/food_clock.png").convert_alpha()
+        self.food_gun = pygame.image.load(r"image/food/food_gun.png").convert_alpha()
+        self.food_iron = pygame.image.load(r"image/food/food_iron.png").convert_alpha()
+        self.food_protect = pygame.image.load(r"image/food/food_protect.png").convert_alpha()
+        self.food_star = pygame.image.load(r"image/food/food_star.png").convert_alpha()
+        self.food_tank = pygame.image.load(r"image/food/food_tank.png").convert_alpha()
         # 随机选择一个道具
         self.kind = random.choice([1,2,3,4,5,6,7])
         # 根据选择的道具加载对应道具的图片

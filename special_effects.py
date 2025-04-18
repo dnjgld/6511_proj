@@ -12,20 +12,20 @@ class SE:
     def __init__(self):
 
         # 初始化保护罩的图片
-        protect_image = pygame.image.load(r"image\special_effects\protect.png").convert_alpha()
+        protect_image = pygame.image.load(r"image/special_effects/protect.png").convert_alpha()
         self.protect = []
         self.protect.append(protect_image.subsurface((0, 0), (48, 48)))
         self.protect.append(protect_image.subsurface((48, 0), (48, 48)))
 
         # 敌军坦克出现动画
-        appearance_image = pygame.image.load(r"image\special_effects\appear.png").convert_alpha()
+        appearance_image = pygame.image.load(r"image/special_effects/appear.png").convert_alpha()
         self.appearance = []
         self.appearance.append(appearance_image.subsurface((0, 0), (48, 48)))
         self.appearance.append(appearance_image.subsurface((48, 0), (48, 48)))
         self.appearance.append(appearance_image.subsurface((96, 0), (48, 48)))
 
         # 子弹爆炸特效
-        boom_dynamic_image = pygame.image.load(r"image\special_effects\boom_dynamic.png").convert_alpha()
+        boom_dynamic_image = pygame.image.load(r"image/special_effects/boom_dynamic.png").convert_alpha()
         self.boom = []
         self.boom.append(boom_dynamic_image.subsurface((0, 0), (48, 48)))
         self.boom.append(boom_dynamic_image.subsurface((48, 0), (48, 48)))

@@ -25,19 +25,19 @@ class EnemyTank(pygame.sprite.Sprite):
 
         # 根据坦克的种类，加载不同种类坦克的图片
         if self.kind == 1:
-            self.enemy_x_0 = pygame.image.load(r"image\enemy_1_0.png").convert_alpha()
-            self.enemy_x_3 = pygame.image.load(r"image\enemy_1_3.png").convert_alpha()
+            self.enemy_x_0 = pygame.image.load(r"image/enemy_1_0.png").convert_alpha()
+            self.enemy_x_3 = pygame.image.load(r"image/enemy_1_3.png").convert_alpha()
         if self.kind == 2:
-            self.enemy_x_0 = pygame.image.load(r"image\enemy_2_0.png").convert_alpha()
-            self.enemy_x_3 = pygame.image.load(r"image\enemy_2_3.png").convert_alpha()
+            self.enemy_x_0 = pygame.image.load(r"image/enemy_2_0.png").convert_alpha()
+            self.enemy_x_3 = pygame.image.load(r"image/enemy_2_3.png").convert_alpha()
         if self.kind == 3:
-            self.enemy_x_0 = pygame.image.load(r"image\enemy_3_1.png").convert_alpha()
-            self.enemy_x_3 = pygame.image.load(r"image\enemy_3_0.png").convert_alpha()
+            self.enemy_x_0 = pygame.image.load(r"image/enemy_3_1.png").convert_alpha()
+            self.enemy_x_3 = pygame.image.load(r"image/enemy_3_0.png").convert_alpha()
         if self.kind == 4:
-            self.enemy_x_0 = pygame.image.load(r"image\enemy_4_0.png").convert_alpha()
-            self.enemy_x_3 = pygame.image.load(r"image\enemy_4_3.png").convert_alpha()
-        self.enemy_3_0 = pygame.image.load(r"image\enemy_3_0.png").convert_alpha()
-        self.enemy_3_2 = pygame.image.load(r"image\enemy_3_2.png").convert_alpha()
+            self.enemy_x_0 = pygame.image.load(r"image/enemy_4_0.png").convert_alpha()
+            self.enemy_x_3 = pygame.image.load(r"image/enemy_4_3.png").convert_alpha()
+        self.enemy_3_0 = pygame.image.load(r"image/enemy_3_0.png").convert_alpha()
+        self.enemy_3_2 = pygame.image.load(r"image/enemy_3_2.png").convert_alpha()
 
         # 参数:是否携带道具
         self.isred = isred

@@ -10,13 +10,13 @@ import pygame
 # 该模块是地图元素类基础元素类 包含砖块类、石头类、河流类、树类、冰类和基地类
 
 # 将图片加载
-brickImage = r"image\wall\brick.png"
-ironImage = r"image\wall\iron.png"
-riverImage = r"image\wall\river1.png"
-treeImage = r"image\wall\tree.png"
-iceImage = r"image\wall\ice.png"
+brickImage = r"image/wall/brick.png"
+ironImage = r"image/wall/iron.png"
+riverImage = r"image/wall/river1.png"
+treeImage = r"image/wall/tree.png"
+iceImage = r"image/wall/ice.png"
 # 基地的图片
-homeImage = r"image\home.png"
+homeImage = r"image/home.png"
 # 这些类继承pygame的精灵类 精灵可以认为成是一个个小图片，一种可以在屏幕上移动的图形对象，并且可以与其他图形对象交互
 #砖块的类
 class Brick(pygame.sprite.Sprite):

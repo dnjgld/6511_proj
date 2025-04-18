@@ -30,39 +30,39 @@ class Game:
         self.screen = pygame.display.set_mode(resolution)
         pygame.display.set_caption("Tank War ")
         # 加载图片,音乐,音效.
-        self.background_image = pygame.image.load(r"image\background.png")
+        self.background_image = pygame.image.load(r"image/background.png")
         # 右边提示图片加载
-        self.background_image_level_mode = pygame.image.load(r"image\background_level_model_tishi.png")
-        self.background_image_endless_mode = pygame.image.load(r"image\background_endless_mode_tishi.png")
-        self.background_image_heads_up_mode = pygame.image.load(r"image\background_heads_up_mode_tishi.png")
+        self.background_image_level_mode = pygame.image.load(r"image/background_level_model_tishi.png")
+        self.background_image_endless_mode = pygame.image.load(r"image/background_endless_mode_tishi.png")
+        self.background_image_heads_up_mode = pygame.image.load(r"image/background_heads_up_mode_tishi.png")
 
-        self.enemy_icon = pygame.image.load(r"image\enemy.png")
-        self.heart_icon = pygame.image.load(r"image\heart.png")
+        self.enemy_icon = pygame.image.load(r"image/enemy.png")
+        self.heart_icon = pygame.image.load(r"image/heart.png")
 
         # 游戏结束图片
-        self.game_over_player1_win = pygame.image.load(r"image\game_over_player1_win.png")
-        self.game_over_player2_win = pygame.image.load(r"image\game_over_player2_win.png")
-        self.game_over_win = pygame.image.load(r"image\game_over_win.png")
-        self.game_over_fail = pygame.image.load(r"image\game_over_fail.png")
+        self.game_over_player1_win = pygame.image.load(r"image/game_over_player1_win.png")
+        self.game_over_player2_win = pygame.image.load(r"image/game_over_player2_win.png")
+        self.game_over_win = pygame.image.load(r"image/game_over_win.png")
+        self.game_over_fail = pygame.image.load(r"image/game_over_fail.png")
         # 暂停图片加载
-        self.game_pause_image = pygame.image.load(r"image\game_pause.png")
+        self.game_pause_image = pygame.image.load(r"image/game_pause.png")
 
         # 音效加载-------------------------------------------------------
-        self.bang_sound = pygame.mixer.Sound(r"music\bang.wav")
+        self.bang_sound = pygame.mixer.Sound(r"music/bang.wav")
         self.bang_sound.set_volume(1)
-        self.start_sound = pygame.mixer.Sound(r"music\start.wav")
+        self.start_sound = pygame.mixer.Sound(r"music/start.wav")
         # 队友加载和吃道具音效
-        self.add_sound = pygame.mixer.Sound(r"music\add.wav")
+        self.add_sound = pygame.mixer.Sound(r"music/add.wav")
         # 子弹打出音效（正式）
-        self.attack_sound = pygame.mixer.Sound(r"music\attack.mp3")
+        self.attack_sound = pygame.mixer.Sound(r"music/attack.mp3")
         # 获取道具音效（正式）
-        self.get_props_sound = pygame.mixer.Sound(r"music\get_props.mp3")
+        self.get_props_sound = pygame.mixer.Sound(r"music/get_props.mp3")
         # 道具出现音效（正式）
-        self.prop_sound = pygame.mixer.Sound(r"music\prop.mp3")
+        self.prop_sound = pygame.mixer.Sound(r"music/prop.mp3")
         # 炸弹爆炸特效（正式）
-        self.prop_boom_sound = pygame.mixer.Sound(r"music\prop_boom.wav")
+        self.prop_boom_sound = pygame.mixer.Sound(r"music/prop_boom.wav")
         # 打到墙上的音效（正式）
-        self.wall_sound = pygame.mixer.Sound(r"music\wall.mp3")
+        self.wall_sound = pygame.mixer.Sound(r"music/wall.mp3")
         # 定义精灵组:坦克，我方坦克，敌方坦克，敌方子弹
         # 用于保存和管理多个 Sprite 对象的容器类。pygame.sprite.Group()
         self.allTankGroup = pygame.sprite.Group()

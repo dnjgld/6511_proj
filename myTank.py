@@ -9,12 +9,12 @@ import bulletClass
 详细情况情况下方代码
 """
 # 玩家一和玩家二的坦克图片
-tank_T1_0 = r"image\tank_T1_0.png"
-tank_T1_1 = r"image\tank_T1_1.png"
-tank_T1_2 = r"image\tank_T1_2.png"
-tank_T2_0 = r"image\tank_T2_0.png"
-tank_T2_1 = r"image\tank_T2_1.png"
-tank_T2_2 = r"image\tank_T2_2.png"
+tank_T1_0 = r"image/tank_T1_0.png"
+tank_T1_1 = r"image/tank_T1_1.png"
+tank_T1_2 = r"image/tank_T1_2.png"
+tank_T2_0 = r"image/tank_T2_0.png"
+tank_T2_1 = r"image/tank_T2_1.png"
+tank_T2_2 = r"image/tank_T2_2.png"
 
 # 我方坦克类（继承了pygame的精灵类）
 class MyTank(pygame.sprite.Sprite):
