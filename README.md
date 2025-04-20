@@ -26,16 +26,16 @@ Due to the large state space and the need to flexibly adjust the strategy accord
 
 ### The uncertainties involved:
 
-●Enemy Tank Behavior: Enemy tanks' strategies and movements are unpredictable.<br>
-●Map Variability: The map layout may vary in different games. The location of walls may affect the path of action and decisions.<br>
-●Game Dynamics change: The destruction of walls and evolving base status increase the complexity of state transitions and decision-making.<br>
-●Data and Engine Integration: There may be challenges in capturing real-time game state data and interfacing reliably with the game engine, especially under rapidly changing conditions.<br>
+- Enemy Tank Behavior: Enemy tanks' strategies and movements are unpredictable.<br>
+- Map Variability: The map layout may vary in different games. The location of walls may affect the path of action and decisions.<br>
+- Game Dynamics change: The destruction of walls and evolving base status increase the complexity of state transitions and decision-making.<br>
+- Data and Engine Integration: There may be challenges in capturing real-time game state data and interfacing reliably with the game engine, especially under rapidly changing conditions.<br>
 
 ### Non-Trivial Aspects:
 
-● The problem requires learning complex strategies for both offense and defense, as the agents must adapt to unpredictable enemy behavior and changing environments. <br>
-●Incorporating reinforcement learning into a dynamic game environment, especially with the added complexity of coordinating multiple allied units presents significant challenges in state representation and reward design.<br>
-●Traditional algorithms like Expectimax are no longer applicable, as we will leverage deep reinforcement learning to navigate the high-dimensional state and action spaces.<br>
+- The problem requires learning complex strategies for both offense and defense, as the agents must adapt to unpredictable enemy behavior and changing environments. <br>
+- Incorporating reinforcement learning into a dynamic game environment, especially with the added complexity of coordinating multiple allied units presents significant challenges in state representation and reward design.<br>
+- Traditional algorithms like Expectimax are no longer applicable, as we will leverage deep reinforcement learning to navigate the high-dimensional state and action spaces.<br>
 
 ### Existing Solution Methods
 
