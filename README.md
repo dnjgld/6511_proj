@@ -26,10 +26,10 @@ Due to the large state space and the need to flexibly adjust the strategy accord
 
 ### The uncertainties involved:
 
-●Enemy Tank Behavior: Enemy tanks' strategies and movements are unpredictable.
-●Map Variability: The map layout may vary in different games. The location of walls may affect the path of action and decisions.
-●Game Dynamics change: The destruction of walls and evolving base status increase the complexity of state transitions and decision-making.
-●Data and Engine Integration: There may be challenges in capturing real-time game state data and interfacing reliably with the game engine, especially under rapidly changing conditions.
+●Enemy Tank Behavior: Enemy tanks' strategies and movements are unpredictable.<br>
+●Map Variability: The map layout may vary in different games. The location of walls may affect the path of action and decisions.<br>
+●Game Dynamics change: The destruction of walls and evolving base status increase the complexity of state transitions and decision-making.<br>
+●Data and Engine Integration: There may be challenges in capturing real-time game state data and interfacing reliably with the game engine, especially under rapidly changing conditions.<br>
 
 ### Non-Trivial Aspects:
 
