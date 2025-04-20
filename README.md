@@ -61,7 +61,7 @@ https://arxiv.org/pdf/1706.02275
 - river, ice, forest (slow or hide movement)
 - empty ground
 Because bricks disappear when hit, this layer changes during play and therefore belongs in the state.
-6. Power-ups("food" in the source): if a star, helmet, shovel, bomb, clock or tank-life icon is showing, we revord its type and vell. They time-out after a few seconds, so the remaining timer is also part of state.
+6. Power-ups("food" in the source): if a star, helmet, shovel, bomb, clock or tank-life icon is showing, we record its type and cell. They time-out after a few seconds, so the remaining timer is also part of state.
 7. Game phase variables: current level(1-35), score remaining lives, and the global tick counter. They are not needed for a single decision, but they matter over an episode for rewards and curriculum learning.
 
 ## Why these pieces(and not more)
