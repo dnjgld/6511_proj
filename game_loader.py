@@ -1206,6 +1206,11 @@ class Game:
 
             self.clock.tick(60)
 
+#######
+#######
+# The following code are written by us to let AI play the game
+# The code is not finished yet
+
     def game_running_ai_play(self, agent, isEndless=False):
         """
         AI play function 
@@ -1322,10 +1327,10 @@ class Game:
             # Check for game over conditions
             if self.remaining_enemy == 0:
                 self.overGameWin = True
-                print("AI获胜！")
+                print("AI wining!")
                 done = True
             elif self.overGameLoss or self.myTank_T1.life <= 0:
-                print("AI失败！")
+                print("AI losing!")
                 done = True
 
             # render the game screen
@@ -1468,7 +1473,7 @@ class Game:
 
             while not done:
                 self.event_section()
-                print("AI decision making...")
+                # print("AI decision making...")
 
                 state = [
                     self.myTank_T1.rect.left / 630,
@@ -1480,10 +1485,10 @@ class Game:
                 state = np.array(state, dtype=np.float32).reshape(1, -1)
                 action = agent.act(state)
 
-                print("AI action execution...")
+                # print("AI action execution...")
                 self.execute_action(action)
 
-                print("Enemy movement...")
+                # print("Enemy movement...")
                 for each in self.allEnemyGroup:
                     if self.enemyCouldMove:
                         self.allTankGroup.remove(each)
@@ -1494,6 +1499,12 @@ class Game:
                 self.props_section()
 
                 reward = 0
+                old_pos = (self.myTank_T1.rect.left, self.myTank_T1.rect.top)
+                self.execute_action(action)
+                new_pos = (self.myTank_T1.rect.left, self.myTank_T1.rect.top)
+                if action in [0,1,2,3] and old_pos == new_pos:
+                    reward -= 0.5
+
                 if self.remaining_enemy == 0:
                     self.overGameWin = True
 
@@ -1501,7 +1512,7 @@ class Game:
                     reward = 10
                     done = True
                 elif self.overGameLoss or self.myTank_T1.life <= 0:
-                    reward = -10
+                    reward = -100
                     done = True
                 elif self.prop.life == 0:
                     reward = 1
@@ -1517,7 +1528,7 @@ class Game:
                 agent.remember(state, action, reward, next_state, done)
                 
                 train_step += 1
-                if train_step % 50 == 0:  # 每10帧训练一次，可根据需要调整
+                if train_step % 50 == 0:
                     agent.replay(batch_size)
                 total_reward += reward
 
@@ -1592,5 +1603,5 @@ class Game:
                         self.attack_sound.play()
                     self.myTank_T1.shoot()
                     self.myTank_T1.bulletNotCooling = False
-            time.sleep(0.01)  # 模拟帧延迟
+            time.sleep(0.01)
         self.allTankGroup.add(self.myTank_T1)
