@@ -15,8 +15,8 @@ We will mainly do edition on:
 We created:
 #### ai_agent.py
 This file implement the Deep Q-Network (DQN) agent for tankwar game. We referenced the program:
-https://github.com/keon/deep-q-learning/blob/master/dqn_batch.py 
-We currently didn't make any changes to it but we may modify it.
+https://github.com/keon/deep-q-learning/blob/master/dqn_batch.py<br>
+We currently didn't make changes to it but we may modify it later.
 
 #### ai_agent_play.py
 
