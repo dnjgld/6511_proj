@@ -5,11 +5,12 @@ Github website: https://github.com/HelloZhan/pygame-TankWar
 
 Introduction Website: https://blog.csdn.net/qq_46470984/article/details/122003755
 
-We will mainly do edition on :
-game_loader.py
-main.py
+We will mainly do edition on:
+#### game_loader.py
+#### main.py
 
 We (will) created:
-ai_play.py
-ai_train.py
+#### ai_play.py
+#### ai_train.py
 
+State space:
