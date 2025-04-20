@@ -49,4 +49,5 @@ https://arxiv.org/pdf/1706.02275
 ## State space description:
 - Natural language description of state space in draft report
 - Complete mathematical description of states, transitions, actions, and observations
+- We decided to use level mode to train our ai agent, in this code there are 35 levels, ideally 15 levels can be passed
 
