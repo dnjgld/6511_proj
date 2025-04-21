@@ -68,3 +68,29 @@ Because bricks disappear when hit, this layer changes during play and therefore 
 Everything above directly changes either (1) the legal moves we can take next, or (2) the reward we will recieve soon (survive, kill an enemy, lose the base, collect a power-up). Items such as the exact sprite image or sound channel don't affect gameplay decision, so we leave them out.
 
 This mirrors the outline already in the proposal but fills in the details that the grader will look for: bullets, bricks, power-ups and base shielding in addition to simple tank coordinates.
+
+## mathematical description
+
+### state space:<br>
+s = (px, py, d, l, e_{j,x}, e_{j,y}, e_{j,d}, e_{j,l}), j = {1, 2, 3} <br>
+(We now have three enemy tanks in ai_play)<br>
+px, py: player's tank position<br>
+d: player's tank direction<br>
+l: player's tank life<br>
+e_{j,x}, e_{j,y}: enemy i's tank position<br>
+e_{j,d}: enemy i's tank direction<br>
+e_{j,l}: enemy i's tank life<br>
+
+### action space:<br>
+a = {0,1,2,3,4}<br>
+a = 0 means move up<br>
+a = 1 means move down<br>
+a = 2 means move left<br>
+a = 3 means move right<br>
+a = 4 means shoot<br>
+
+### transition:<br>
+T(s, a) = s'
+
+### observation:<br>
+s'
