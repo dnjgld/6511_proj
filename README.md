@@ -72,14 +72,14 @@ This mirrors the outline already in the proposal but fills in the details that t
 ## mathematical description
 
 ### state space:<br>
-s = (px, py, d, l, e_{j,x}, e_{j,y}, e_{j,d}, e_{j,l}), j = {1, 2, 3} <br>
+s = (px, py, d, l, e_{i,x}, e_{i,y}, e_{i,d}, e_{i,l}), j = {1, 2, 3} <br>
 (We now have three enemy tanks in ai_play)<br>
 px, py: player's tank position<br>
 d: player's tank direction<br>
 l: player's tank life<br>
-e_{j,x}, e_{j,y}: enemy i's tank position<br>
-e_{j,d}: enemy i's tank direction<br>
-e_{j,l}: enemy i's tank life<br>
+e_{i,x}, e_{i,y}: enemy i's tank position<br>
+e_{i,d}: enemy i's tank direction<br>
+e_{i,l}: enemy i's tank life<br>
 
 ### action space:<br>
 a = {0,1,2,3,4}<br>
