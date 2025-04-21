@@ -51,9 +51,12 @@ https://arxiv.org/pdf/1706.02275
 - Complete mathematical description of states, transitions, actions, and observations
 
 ## What the agent needs to know at every frame
-1. Our tank itself: its grid-cell position(row,col), the direction it's facing(up/down/left/right) and whether the gun is on cooldown
-2. Bullets already in flight: for every shell on screen we track its current(row,col) cell and heading. A bullet disappears when it hits a wall, tank or map edge, so its life-span matters for predicting danger.
-3. Enemy tanks (up to four at once): Each enemy's position, facing direction and remaining "health" (one hit kills most, but some special tanks take several shots). Enemy movement is semi-random, so the agent uses their current heading plus map layout to anticipate their next cell.
+1. Our tank itself: its grid-cell position(row,col), the direction it's facing(up/down/left/right)
+2. Enemy tanks (up to four at once): Each enemy's position, facing direction and remaining "health" (one hit kills most, but some special tanks take several shots). Enemy movement is semi-random, so the agent uses their current heading plus map layout to anticipate their next cell.
+
+The above two are the basic information our agent need to know, and we may consider adding more variables like:
+
+3. Bullets already in flight: for every shell on screen we track its current(row,col) cell and heading. A bullet disappears when it hits a wall, tank or map edge, so its life-span matters for predicting danger.
 4. Our base: a single, fixed cell the agent must protect. Two facts matter: (a)is the base still intact; (b) how much brick wall still surrounds it(those bricks can be shot away).
 5. Static terrain - a 26 x 26 grid describing what occipies every cell right now:
 - indestructible steel
