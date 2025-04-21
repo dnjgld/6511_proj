@@ -90,7 +90,11 @@ a = 3 means move right<br>
 a = 4 means shoot<br>
 
 ### transition:<br>
-T(s, a) = s'
+From the current state s, perform the action a will transite to a new state s'.<br> In the process, tank positions, directions, health, and all enemy tank states may be updated<br>
+T(s, a) = s'<br>
+
 
 ### observation:<br>
-s'
+Currently, we think our agent can observe the complete game state<br>
+so the observation is:<br>
+o = s'
