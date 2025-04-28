@@ -37,7 +37,7 @@ def main():
     # 创建加载界面的图片
     init_image_all = [None]*107
     for i in range(1,106):
-        init_image_all[i] = pygame.image.load(r"image\init\init"+str(i)+".png")
+        init_image_all[i] = pygame.image.load(r"image/init/init"+str(i)+".png")
 
     # 显示加载界面（其中一张图片）
     surface.blit(init_image_all[1], (10, 20))
@@ -75,7 +75,7 @@ def main():
         pygame.display.flip() # 刷新界面
         # 将图片初始化为默认背景图片
         background_image = pygame_menu.BaseImage(
-            image_path=r"image\maps\Battle-City-"+str(i)+".png"
+            image_path=r"image/maps/Battle-City-"+str(i)+".png"
         )
         # 关卡模式菜单添加标签、间隔、按钮
         level_mode_menu.add.label(str(i)+"  Checkpoint")
@@ -100,7 +100,7 @@ def main():
     # 单挑模式菜单的创建 （因为目前只有一关 所以只加一个按钮）
     heads_up_menu = pygame_menu.Menu('Heads up Mode Menu:Choose a level', 750, 630, theme=checkpoint_theme)
     background_image = pygame_menu.BaseImage(
-        image_path=r"image\maps\Battle-City-51.png"
+        image_path=r"image/maps/Battle-City-51.png"
     )
     heads_up_menu.add.label("heads up Checkpoint")
     heads_up_menu.add.vertical_margin(20)
@@ -128,7 +128,7 @@ def main():
     # 创建主“菜单”
     main_menu = pygame_menu.Menu('Main Menu', 750, 630, theme=main_theme)
 
-    image_path = r"image\logo.png"
+    image_path = r"image/logo.png"
     main_menu.add.image(image_path,scale = (1.2,1.2))
     main_menu.add.button('Level mode', level_mode_menu)
     main_menu.add.button('Endless mode', endless_mode_menu)

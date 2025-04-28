@@ -11,10 +11,10 @@ class Bullet(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         # 将子弹”上下左右“的图片进行加载
-        self.bullet_up = pygame.image.load(r"image\bullet_up.png")
-        self.bullet_down = pygame.image.load(r"image\bullet_down.png")
-        self.bullet_left = pygame.image.load(r"image\bullet_left.png")
-        self.bullet_right = pygame.image.load(r"image\bullet_right.png")
+        self.bullet_up = pygame.image.load(r"image/bullet_up.png")
+        self.bullet_down = pygame.image.load(r"image/bullet_down.png")
+        self.bullet_left = pygame.image.load(r"image/bullet_left.png")
+        self.bullet_right = pygame.image.load(r"image/bullet_right.png")
 
         # 子弹方向 速度 生命 碎石
         self.dir_x , self.dir_y = 0,0
