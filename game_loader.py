@@ -1206,6 +1206,14 @@ class Game:
 
             self.clock.tick(60)
 
+##############################################################
+##############################################################
+# The following code are written by us
+# The code is not finished yet
+##############################################################
+##############################################################
+
+    # We first create a function similar to game_running and game_running_singled_out func to let AI play the game 
     def game_running_ai_play(self, agent, isEndless=False):
         """
         AI play function 
@@ -1266,6 +1274,8 @@ class Game:
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         ]
+        
+        # let AI play the 26-35 levels of the game
         checkpoint = random.randint(26, 35)
         self.bgMap.checkpoint(checkpoint, map_num)
         for i in range(1, 4):
@@ -1278,6 +1288,7 @@ class Game:
                 self.greenEnemyGroup.add(enemy)
             else:
                 self.otherEnemyGroup.add(enemy)
+
         self.myTank_T2.life = 0
         self.myTank_T1.life = 3
         self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 24 * 24
@@ -1290,11 +1301,13 @@ class Game:
         self.invincible_T2 = 0
         self.iron_time = 0
 
+
         done = False
         while not done:
             self.event_section() 
 
             # AI decision making
+            # Currently, the state includes the position of our tank, the life of our tank, the number of enemies, and whether there is a prop
             state = [
                 self.myTank_T1.rect.left / 630,
                 self.myTank_T1.rect.top / 630,
@@ -1322,10 +1335,10 @@ class Game:
             # Check for game over conditions
             if self.remaining_enemy == 0:
                 self.overGameWin = True
-                print("AI获胜！")
+                print("AI wining!")
                 done = True
             elif self.overGameLoss or self.myTank_T1.life <= 0:
-                print("AI失败！")
+                print("AI losing!")
                 done = True
 
             # render the game screen
@@ -1468,7 +1481,7 @@ class Game:
 
             while not done:
                 self.event_section()
-                print("AI decision making...")
+                # print("AI decision making...")
 
                 state = [
                     self.myTank_T1.rect.left / 630,
@@ -1480,10 +1493,10 @@ class Game:
                 state = np.array(state, dtype=np.float32).reshape(1, -1)
                 action = agent.act(state)
 
-                print("AI action execution...")
+                # print("AI action execution...")
                 self.execute_action(action)
 
-                print("Enemy movement...")
+                # print("Enemy movement...")
                 for each in self.allEnemyGroup:
                     if self.enemyCouldMove:
                         self.allTankGroup.remove(each)
@@ -1494,6 +1507,12 @@ class Game:
                 self.props_section()
 
                 reward = 0
+                old_pos = (self.myTank_T1.rect.left, self.myTank_T1.rect.top)
+                self.execute_action(action)
+                new_pos = (self.myTank_T1.rect.left, self.myTank_T1.rect.top)
+                if action in [0,1,2,3] and old_pos == new_pos:
+                    reward -= 0.5
+
                 if self.remaining_enemy == 0:
                     self.overGameWin = True
 
@@ -1501,7 +1520,7 @@ class Game:
                     reward = 10
                     done = True
                 elif self.overGameLoss or self.myTank_T1.life <= 0:
-                    reward = -10
+                    reward = -100
                     done = True
                 elif self.prop.life == 0:
                     reward = 1
@@ -1592,5 +1611,5 @@ class Game:
                         self.attack_sound.play()
                     self.myTank_T1.shoot()
                     self.myTank_T1.bulletNotCooling = False
-            time.sleep(0.01)  # 模拟帧延迟
+            time.sleep(0.01)
         self.allTankGroup.add(self.myTank_T1)
