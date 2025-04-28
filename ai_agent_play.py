@@ -3,11 +3,11 @@ from game_loader import Game
 import os
 
 game = Game()
-agent = TankAgent(state_size=5, action_size=5)
+agent = TankAgent(state_size=20, action_size=5, epsilon=0.01)
 
-if os.path.exists("tank_dqn_final.h5"):
-    agent.load("tank_dqn_final.h5")
-    print("loaded model weights: tank_dqn_final.h5")
+if os.path.exists("tank_dqn_final_1_25.keras"):
+    agent.load("tank_dqn_final_1_25.keras")
+    print("loaded model weights: tank_dqn_final_1_25.keras")
     # agent.model.summary()
 
 game.game_running_ai_play(agent)
