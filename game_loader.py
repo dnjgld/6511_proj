@@ -1517,7 +1517,7 @@ class Game:
                 agent.remember(state, action, reward, next_state, done)
                 
                 train_step += 1
-                if train_step % 50 == 0:  # 每10帧训练一次，可根据需要调整
+                if train_step % 50 == 0:
                     agent.replay(batch_size)
                 total_reward += reward
 
