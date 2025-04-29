@@ -1220,19 +1220,15 @@ class Game:
         state = [
             self.myTank_T1.rect.left / 630,
             self.myTank_T1.rect.top / 630,
-            self.myTank_T1.dir_x,
-            self.myTank_T1.dir_y,
             self.myTank_T1.life / 3,
         ]
         for enemy in self.allEnemyGroup:
             state.extend([
                 enemy.rect.left / 630,
                 enemy.rect.top / 630,
-                enemy.dir_x,
-                enemy.dir_y,  
                 enemy.life / 3
             ])
-        while len(state) < 5 + 3 * 5:
+        while len(state) < 3 + 3 * self.enemyNumber:
             state.append(0)
         return np.array(state, dtype=np.float32).reshape(1, -1)
     
@@ -1263,10 +1259,10 @@ class Game:
 
         # 1. If the game is over, return a large negative reward.
         if self.overGameLoss:
-            return -10
+            return -100
         
         if self.remaining_enemy == 0 or getattr(self, "overGameWin", False):
-            return 10 
+            return 100 
         
         # 2. If the player destroys the wall of base, return a negative reward.
         old_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
@@ -1275,7 +1271,7 @@ class Game:
             reward -= 2
         
         # 3. If the player's tank is destroyed, return a negative reward.
-        if self.myTank_T1.life < old_state[0][4] * 3:
+        if self.myTank_T1.life < old_state[0][2] * 3:
             reward -= 3
 
         # 4. If the player changes direction more than 4 times in a short period, return a negative reward.
@@ -1307,16 +1303,16 @@ class Game:
                 reward -= 3
 
         # 5. If the enemy tank is destroyed, return a positive reward.
-        old_enemy_count = sum([1 for i in range(5, len(old_state[0]), 5) if old_state[0][i+4] > 0])
-        new_enemy_count = sum([1 for i in range(5, len(new_state[0]), 5) if new_state[0][i+4] > 0])
+        old_enemy_count = sum([1 for i in range(3, len(old_state[0]), 3) if old_state[0][i+2] > 0])
+        new_enemy_count = sum([1 for i in range(3, len(new_state[0]), 3) if new_state[0][i+2] > 0])
         if new_enemy_count < old_enemy_count:
-            reward += 15
+            reward += 20
 
         # 6. Encourage the player to move towards the enemy tanks
         px, py = new_state[0][0], new_state[0][1]
         min_dist = float('inf')
-        for i in range(5, len(new_state[0]), 5):
-            ex, ey, elife = new_state[0][i], new_state[0][i+1], new_state[0][i+4]
+        for i in range(3, len(new_state[0]), 3):
+            ex, ey, elife = new_state[0][i], new_state[0][i+1], new_state[0][i+2]
             if elife > 0:
                 dist = abs(px - ex) + abs(py - ey)
                 if dist < min_dist:
@@ -1379,7 +1375,7 @@ class Game:
         return reward
     
     # We create a function similar to game_running and game_running_singled_out func to let AI play the game 
-    def game_running_ai_play(self, agent, isEndless=False):
+    def game_running_ai_play(self, agent, enemy_num=1, isEndless=False):
         """
         AI play function 
         """
@@ -1444,7 +1440,7 @@ class Game:
         # checkpoint = random.randint(26, 35)
         checkpoint = 2
         self.bgMap.checkpoint(checkpoint, map_num)
-        for i in range(1, 4):
+        for i in range(1, enemy_num + 1):
             enemy = enemyTank.EnemyTank(i)
             self.allTankGroup.add(enemy)
             self.allEnemyGroup.add(enemy)
@@ -1462,7 +1458,7 @@ class Game:
         self.overGameWin = False
         self.enemyCouldMove = True
         self.remaining_enemy = len(self.allEnemyGroup)
-        self.enemyNumber = len(self.allEnemyGroup)
+        self.enemyNumber = enemy_num
         self.invincible_T1 = 0
         self.invincible_T2 = 0
         self.iron_time = 0
@@ -1508,7 +1504,7 @@ class Game:
         print("AI Play End")
 
     # this function is used to train the AI agent
-    def game_running_ai_trainning(self, agent, episodes=50, batch_size=8, isEndless=False, show_training=True, file_name="default.keras"):
+    def game_running_ai_trainning(self, agent, episodes=50, batch_size=8, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
         episode_rewards = []
 
         for episode in range(episodes):
@@ -1575,7 +1571,7 @@ class Game:
             # checkpoint = random.randint(1, 35)
             checkpoint = 2
             self.bgMap.checkpoint(checkpoint, map_num)
-            for i in range(1, 4):
+            for i in range(1, enemy_num + 1):
                 enemy = enemyTank.EnemyTank(i)
                 self.allTankGroup.add(enemy)
                 self.allEnemyGroup.add(enemy)
@@ -1592,7 +1588,7 @@ class Game:
             self.overGameWin = False
             self.enemyCouldMove = True
             self.remaining_enemy = len(self.allEnemyGroup)
-            self.enemyNumber = len(self.allEnemyGroup)
+            self.enemyNumber = enemy_num
             self.invincible_T1 = 0
             self.invincible_T2 = 0
             self.iron_time = 0
