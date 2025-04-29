@@ -1296,7 +1296,7 @@ class Game:
                     min_dist_old = dist
 
         # make sure the agent is moveing
-        if min_dist_new < min_dist_old and (abs(px_new - px_old) + abs(py_new - py_old)) > 0.1:
+        if min_dist_new < min_dist_old and px_new != px_old and py_new != py_old:
             reward += 0.05
 
         return reward
