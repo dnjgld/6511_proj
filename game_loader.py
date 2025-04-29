@@ -1254,51 +1254,123 @@ class Game:
     # function to calculate the reward based on the state transition
     def reward_calculation(self, old_state, new_state):
         reward = 0
-        # 1. 失败惩罚
+        # test reward function
+
+        # 1. If the game is over, return a large negative reward.
         if self.overGameLoss:
             return -10
-
-        # 2. 基地墙体被毁惩罚
-        old_walls = len([b for b in self.bgMap.brickGroup if (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
-        new_walls = len([b for b in self.bgMap.brickGroup if (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
-        if new_walls < old_walls:
+        
+        if self.remaining_enemy == 0 or getattr(self, "overGameWin", False):
+            return 10 
+        
+        # 2. If the player destroys the wall of base, return a negative reward.
+        old_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
+        new_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
+        if new_wall_count < old_wall_count:
             reward -= 2
-
-        # 3. 击杀敌人奖励（每减一条命 +7）
-        old_lives = sum(old_state[5 + i*5 + 4] for i in range(3))
-        new_lives = sum(new_state[5 + i*5 + 4] for i in range(3))
-        kills = (old_lives - new_lives) / (1/3)
-        if kills > 0:
-            reward += 7 * kills
-
-        # 4. 靠近最近敌人奖励/惩罚
-        me_old = (old_state[0], old_state[1])
-        me_new = (new_state[0], new_state[1])
-        old_ds = [abs(me_old[0]-old_state[5+i*5])+abs(me_old[1]-old_state[5+i*5+1]) for i in range(3)]
-        new_ds = [abs(me_new[0]-new_state[5+i*5])+abs(me_new[1]-new_state[5+i*5+1]) for i in range(3)]
-        if min(new_ds) < min(old_ds):
-            reward += 0.5
-        else:
-            reward -= 0.2
-
-        # 5. 鼓励移动行为
-        if (old_state[0], old_state[1]) != (new_state[0], new_state[1]):
-            reward += 0.1
-
-        # 6. 被击中惩罚
-        if self.myTank_T1.life < (old_state[0][4] * 3 if isinstance(old_state[0], list) else old_state[4] * 3):
+        
+        # 3. If the player's tank is destroyed, return a negative reward.
+        if self.myTank_T1.life < old_state[4] * 3:
             reward -= 3
 
-        # 7. 长期不动惩罚
-        if not hasattr(self, 'recent_positions'):
+        # 4. If the player changes direction more than 4 times in a short period, return a negative reward.
+        if not hasattr(self, "recent_dirs"):
             from collections import deque
-            self.recent_positions = deque(maxlen=15)
-        self.recent_positions.append((round(new_state[0],2), round(new_state[1],2)))
-        if len(self.recent_positions)==15 and len(set(self.recent_positions))<=1:
-            reward -= 2
+            self.recent_dirs = deque(maxlen=10)  # record the last 10 directions
+        dir_tuple = (self.myTank_T1.dir_x, self.myTank_T1.dir_y)
+        self.recent_dirs.append(dir_tuple)
 
-        # 8. 生存小奖励
-        reward += 0.1
+        # count the number of direction changes
+        dir_changes = 0
+        last_dir = self.recent_dirs[0]
+        for d in list(self.recent_dirs)[1:]:
+            if d != last_dir:
+                dir_changes += 1
+                last_dir = d
+        # if the player changes direction less than 2 times, return a small positive reward
+        if dir_changes <= 2: 
+            reward += 0.05
+        
+        # 5. If the agent does not move for a long time, return a negative reward.
+        if not hasattr(self, "recent_positions"):
+            from collections import deque
+            self.recent_positions = deque(maxlen=30)
+        px, py = new_state[0],   new_state[1]
+        self.recent_positions.append((round(px, 2), round(py, 2)))
+        if len(self.recent_positions) == 30:
+            unique_pos = len(set(self.recent_positions))
+            if unique_pos <= 3: 
+                reward -= 3
+
+        # 5. If the enemy tank is destroyed, return a positive reward.
+        old_enemy_count = sum(1 for i in range(5, len(old_state), 5) if old_state[i+4] > 0)
+        new_enemy_count = sum(1 for i in range(5, len(new_state), 5) if new_state[i+4] > 0)
+        if new_enemy_count < old_enemy_count:
+            reward += 5
+
+        # 6. Encourage the player to move towards the enemy tanks
+        px, py = new_state[0], new_state[1]
+        min_dist = float('inf')
+        for i in range(5, len(new_state), 5):
+           ex, ey, elife = new_state[i], new_state[i+1], new_state[i+4]
+           if elife > 0:
+            dist = abs(px - ex) + abs(py - ey)
+            if dist < min_dist:
+                min_dist = dist
+        # the closer the enemy tank, the higher the reward
+        # Normalize the distance to [0, 1] so the reward won't be too large
+        if min_dist < float('inf'):
+            reward += 1.0/(min_dist+1)
+            
+        if hasattr(self, "last_action") and self.last_action == 4:
+            px, py = self.myTank_T1.rect.left, self.myTank_T1.rect.top
+            dir_x, dir_y = self.myTank_T1.dir_x, self.myTank_T1.dir_y
+            found_enemy_on_line = False
+            for enemy in self.allEnemyGroup:
+                ex, ey = enemy.rect.left, enemy.rect.top
+                if dir_y == 0 and py == ey:
+                    if (dir_x > 0 and ex > px) or (dir_x < 0 and ex < px):
+                        found_enemy_on_line = True
+                        break
+                if dir_x == 0 and px == ex:
+                    if (dir_y > 0 and ey > py) or (dir_y < 0 and ey < py):
+                        found_enemy_on_line = True
+                        break
+            if found_enemy_on_line:
+                reward += 1.0 
+
+        # 7. If the player moves to a new grid, return a small positive reward.
+        if not hasattr(self, "visited_grids"):
+            self.visited_grids = set()
+        px, py = new_state[0], new_state[1]
+        grid_x, grid_y = int(px * 10), int(py * 10)  # 10x10网格
+        grid = (grid_x, grid_y)
+        if grid not in self.visited_grids:
+            reward += 0.3
+            self.visited_grids.add(grid)
+        
+        # 8. If the player was blocked by walls, encourage them to move in the opposite direction
+        px = int(self.myTank_T1.rect.left)
+        py = int(self.myTank_T1.rect.top)
+        tank_w, tank_h = self.myTank_T1.rect.width, self.myTank_T1.rect.height
+
+        # check if the player is blocked by walls
+        left_blocked = (px <= 3) or any(b.rect.colliderect(px-1, py, 1, tank_h) for b in self.bgMap.brickGroup)
+        right_blocked = (px + tank_w >= 630) or any(b.rect.colliderect(px+tank_w, py, 1, tank_h) for b in self.bgMap.brickGroup)
+        top_blocked = (py <= 3) or any(b.rect.colliderect(px, py-1, tank_w, 1) for b in self.bgMap.brickGroup)
+        bottom_blocked = (py + tank_h >= 630) or any(b.rect.colliderect(px, py+tank_h, tank_w, 1) for b in self.bgMap.brickGroup)
+
+        # if left_blocked and right_blocked, encourage the player to move up or down
+        if left_blocked and right_blocked:
+            if self.myTank_T1.dir_y != 0:
+                reward += 0.5
+        # if top_blocked and bottom_blocked, encourage the player to move left or right
+        if top_blocked and bottom_blocked:
+            if self.myTank_T1.dir_x != 0:
+                reward += 0.5
+
+        # 9. If the player survives, return a small positive reward.
+        reward += 0.05
         return reward
     
     # We create a function similar to game_running and game_running_singled_out func to let AI play the game 
