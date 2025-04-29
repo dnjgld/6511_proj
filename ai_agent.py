@@ -21,8 +21,8 @@ class TankAgent:
     def _build_model(self):
         model = models.Sequential()
         model.add(layers.Input(shape=(self.state_size,)))
-        model.add(layers.Dense(24, activation='relu'))
-        model.add(layers.Dense(24, activation='relu'))
+        model.add(layers.Dense(128, activation='relu'))
+        model.add(layers.Dense(128, activation='relu'))
         model.add(layers.Dense(self.action_size, activation='linear'))
         model.compile(loss='mse', optimizer=optimizers.Adam(learning_rate=self.learning_rate))
         return model
@@ -47,8 +47,6 @@ class TankAgent:
             target_f = self.model.predict(state, verbose=0)
             target_f[0][action] = target
             self.model.fit(state, target_f, epochs=1, verbose=0)
-            if self.epsilon > self.epsilon_min:
-                self.epsilon *= self.epsilon_decay
     
     def load(self, path):
         # load the model

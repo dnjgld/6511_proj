@@ -1276,6 +1276,28 @@ class Game:
         if new_enemy_count < old_enemy_count:
             reward += 20
 
+        # 5. If the player moves closer to the enemy, add a small positive reward
+        px_new, py_new = new_state[0][0], new_state[0][1]
+        min_dist_new = float('inf')
+        for i in range(3, len(new_state[0]), 3):
+            ex, ey, elife = new_state[0][i], new_state[0][i+1], new_state[0][i+2]
+            if elife > 0:
+                dist = abs(px_new - ex) + abs(py_new - ey)
+                if dist < min_dist_new:
+                    min_dist_new = dist
+
+        px_old, py_old = old_state[0][0], old_state[0][1]
+        min_dist_old = float('inf')
+        for i in range(3, len(old_state[0]), 3):
+            ex, ey, elife = old_state[0][i], old_state[0][i+1], old_state[0][i+2]
+            if elife > 0:
+                dist = abs(px_old - ex) + abs(py_old - ey)
+                if dist < min_dist_old:
+                    min_dist_old = dist
+
+        if min_dist_new < min_dist_old:
+            reward += 0.05
+
         return reward
     
     # We create a function similar to game_running and game_running_singled_out func to let AI play the game 
@@ -1503,8 +1525,8 @@ class Game:
 
                 train_step += 1
                 step_count += 1
-                # I plan to train the agent every 1 step
-                if train_step % 1 == 0:
+                # I changed to train the agent every 10 step
+                if train_step % 10 == 0:
                     agent.replay(batch_size)
 
                 total_reward += reward
@@ -1519,6 +1541,9 @@ class Game:
                     print("Episode terminated due to step limit.")
                     break
             
+            if agent.epsilon > agent.epsilon_min:
+                agent.epsilon *= agent.epsilon_decay
+
             end_time = time.time() 
             elapsed = end_time - start_time
             print(f"Episode {episode + 1} finished. Total reward: {total_reward}. Time: {elapsed:.2f} seconds")
