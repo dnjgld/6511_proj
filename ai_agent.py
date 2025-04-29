@@ -53,6 +53,3 @@ class TankAgent:
     def save(self, path):
         # save the model
         self.model.save(path)
-
-import tensorflow as tf
-print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))

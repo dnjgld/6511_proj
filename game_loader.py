@@ -1,3 +1,4 @@
+from collections import deque
 import pygame
 import sys
 import wall
@@ -10,6 +11,7 @@ import special_effects
 import numpy as np
 import random
 import time
+import matplotlib.pyplot as plt
 """
 修改时间：2021.12.15
 修改人：2019051604048 詹孝东
@@ -1263,6 +1265,9 @@ class Game:
         if self.overGameLoss:
             return -10
         
+        if self.remaining_enemy == 0 or getattr(self, "overGameWin", False):
+            return 10 
+        
         # 2. If the player destroys the wall of base, return a negative reward.
         old_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
         new_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
@@ -1275,7 +1280,6 @@ class Game:
 
         # 4. If the player changes direction more than 4 times in a short period, return a negative reward.
         if not hasattr(self, "recent_dirs"):
-            from collections import deque
             self.recent_dirs = deque(maxlen=10)  # record the last 10 directions
         dir_tuple = (self.myTank_T1.dir_x, self.myTank_T1.dir_y)
         self.recent_dirs.append(dir_tuple)
@@ -1287,9 +1291,9 @@ class Game:
             if d != last_dir:
                 dir_changes += 1
                 last_dir = d
-        # if the player changes direction more than 4 times, return a negative reward.
-        if dir_changes >= 4: 
-            reward -= 1
+        # if the player changes direction less than 2 times, return a small positive reward
+        if dir_changes <= 2: 
+            reward += 0.05
         
         # 5. If the agent does not move for a long time, return a negative reward.
         if not hasattr(self, "recent_positions"):
@@ -1320,8 +1324,25 @@ class Game:
         # the closer the enemy tank, the higher the reward
         # Normalize the distance to [0, 1] so the reward won't be too large
         if min_dist < float('inf'):
-            reward += 0.5/(min_dist+1)
+            reward += 1.0/(min_dist+1)
             
+        if hasattr(self, "last_action") and self.last_action == 4:
+            px, py = self.myTank_T1.rect.left, self.myTank_T1.rect.top
+            dir_x, dir_y = self.myTank_T1.dir_x, self.myTank_T1.dir_y
+            found_enemy_on_line = False
+            for enemy in self.allEnemyGroup:
+                ex, ey = enemy.rect.left, enemy.rect.top
+                if dir_y == 0 and py == ey:
+                    if (dir_x > 0 and ex > px) or (dir_x < 0 and ex < px):
+                        found_enemy_on_line = True
+                        break
+                if dir_x == 0 and px == ex:
+                    if (dir_y > 0 and ey > py) or (dir_y < 0 and ey < py):
+                        found_enemy_on_line = True
+                        break
+            if found_enemy_on_line:
+                reward += 1.0 
+
         # 7. If the player moves to a new grid, return a small positive reward.
         if not hasattr(self, "visited_grids"):
             self.visited_grids = set()
@@ -1353,7 +1374,7 @@ class Game:
                 reward += 0.5
 
         # 9. If the player survives, return a small positive reward.
-        reward += 0.1
+        reward += 0.05
 
         return reward
     
@@ -1486,7 +1507,137 @@ class Game:
         print("AI Play End")
 
     # this function is used to train the AI agent
-    def game_running_ai_trainning(self, agent, episodes=50, batch_size=32, isEndless=False,show_training=True):
+    def game_running_ai_trainning(self, agent, episodes=50, batch_size=32, isEndless=False, show_training=True, file_name="default.keras"):
+        episode_rewards = []
+
+        for episode in range(episodes):
+            print(f"\n=== Episode {episode + 1}/{episodes} ===")
+            start_time = time.time() 
+
+            self.allTankGroup.empty()
+            self.mytankGroup.empty()
+            self.allEnemyGroup.empty()
+            self.redEnemyGroup.empty()
+            self.greenEnemyGroup.empty()
+            self.otherEnemyGroup.empty()
+            self.enemyBulletGroup.empty()
+            self.bgMap.brickGroup.empty()
+            self.bgMap.ironGroup.empty()
+            self.bgMap.riverGroup.empty()
+            self.bgMap.iceGroup.empty()
+            self.bgMap.homeGroup.empty()
+            self.bgMap.treeGroup.empty()
+            self.bulletBoomGroup.clear()
+            self.prop.life = 0  
+
+            self.overGameLoss = False
+            self.overGameWin = False
+            self.enemyCouldMove = True
+            self.invincible_T1 = 0
+            self.invincible_T2 = 0
+            self.iron_time = 0
+            self.delay = 100
+            self.visited_grids = set()
+            self.recent_dirs = deque(maxlen=10)
+
+            self.isEndless = isEndless
+            
+            map_num = [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            ]
+            
+            checkpoint = random.randint(1, 35)
+            self.bgMap.checkpoint(checkpoint, map_num)
+            for i in range(1, 4):
+                enemy = enemyTank.EnemyTank(i)
+                self.allTankGroup.add(enemy)
+                self.allEnemyGroup.add(enemy)
+                if enemy.isred:
+                    self.redEnemyGroup.add(enemy)
+                elif enemy.kind == 3:
+                    self.greenEnemyGroup.add(enemy)
+                else:
+                    self.otherEnemyGroup.add(enemy)
+            self.myTank_T2.life = 0
+            self.myTank_T1.life = 3
+            self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 24 * 24
+            self.overGameLoss = False
+            self.overGameWin = False
+            self.enemyCouldMove = True
+            self.remaining_enemy = len(self.allEnemyGroup)
+            self.enemyNumber = len(self.allEnemyGroup)
+            self.invincible_T1 = 0
+            self.invincible_T2 = 0
+            self.iron_time = 0
+
+            total_reward = 0
+            done = False
+            train_step = 0
+
+            max_steps = 3000
+            step_count = 0
+
+            state = self.get_current_state()
+            while not done:
+                action = agent.act(state)
+                next_state, reward, done, obs = self.get_successor_state(action)
+
+                agent.remember(state, action, reward, next_state, done)
+                state = next_state
+
+                train_step += 1
+                step_count += 1
+                if train_step % 10 == 0:
+                    agent.replay(batch_size)
+
+                total_reward += reward
+                
+                if show_training:
+                    self.render_game_screen()
+
+                self.clock.tick(60)
+                
+                if step_count >= max_steps:
+                    print("Episode terminated due to step limit.")
+                    break
+            
+            if agent.epsilon > agent.epsilon_min:
+                agent.epsilon *= agent.epsilon_decay
+            end_time = time.time() 
+            elapsed = end_time - start_time
+            print(f"Episode {episode + 1} finished. Total reward: {total_reward}. Time: {elapsed:.2f} seconds")
+            episode_rewards.append(total_reward)
+            agent.save(file_name)
+            print("Epsilon:", agent.epsilon)
+            print("Model saved.")
+
+        agent.save(file_name)
+        print("Final model saved.")
         self.plot_rewards(episode_rewards)
 
     def plot_rewards(self, rewards):
