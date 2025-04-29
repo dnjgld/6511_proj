@@ -101,3 +101,10 @@ T(s, a) = s'<br>
 Currently, we think our agent can observe the complete game state<br>
 so the observation is:<br>
 o = s'
+
+## State Space Implementation
+In our program, the state sapce is represented by a fixed-length list of numbers that describe the key parts of the game at each moment. We implement this in the Game class with the method get_current_state(). First it takes the player tank's position (normalized x and y), movement direction (dx,dy), and remaining life. Then it loops over up to three enemy tanks and adds each one's relative position (dx,, dy), direction, and life. If there are fewer than three enemies, the list is padded with zeros so every state has the same size (20 values in total).
+
+To generate successor states when an action is taken, we use get_successor_state(action). This method first saves the old state, applies the given action through the game's movement, collision, and display logic, and then calls get_current_state() again to get the new state. It also computes the reward for the transition and checks if the game is over. Finally, it returns four items: the new state vector, the reward, a done flag(true if the game ended), and an observation. In our setup, the observation is exactly the same list of numbers as the new state.
+
+With these two methods, our model clearly separates the process of observing the current game conditions, applying an action, and then observing the result. This simple setup feeds directly into the reinforcement learning agent, which uses these state vectors and observations to learn good actions over time.
