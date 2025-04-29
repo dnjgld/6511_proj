@@ -12,7 +12,7 @@ class TankAgent:
         self.gamma = 0.95  # discount rate
         self.epsilon = epsilon
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.99
+        self.epsilon_decay = 0.995
         self.learning_rate = 0.001
         self.model = self._build_model()
 

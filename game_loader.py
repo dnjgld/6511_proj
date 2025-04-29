@@ -1504,7 +1504,7 @@ class Game:
         print("AI Play End")
 
     # this function is used to train the AI agent
-    def game_running_ai_trainning(self, agent, episodes=50, batch_size=8, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
+    def game_running_ai_trainning(self, agent, episodes=50, batch_size=32, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
         episode_rewards = []
 
         for episode in range(episodes):
@@ -1597,7 +1597,7 @@ class Game:
             done = False
             train_step = 0
 
-            max_steps = 2000
+            max_steps = 1000
             step_count = 0
 
             state = self.get_current_state()
@@ -1676,21 +1676,20 @@ class Game:
         pygame.display.flip()
 
     # update the game state based on the action taken
-    def execute_action(self, action, repeat=1):
+    def execute_action(self, action):
         self.allTankGroup.remove(self.myTank_T1)
-        for _ in range(repeat):
-            if action == 0:
-                self.myTank_T1.moveUp(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-            elif action == 1:
-                self.myTank_T1.moveDown(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-            elif action == 2:
-                self.myTank_T1.moveLeft(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-            elif action == 3:
-                self.myTank_T1.moveRight(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-            elif action == 4:
-                if not self.myTank_T1.bullet.life and self.myTank_T1.bulletNotCooling:
-                    if self.isSoundEffect:
-                        self.attack_sound.play()
-                    self.myTank_T1.shoot()
-                    self.myTank_T1.bulletNotCooling = False
+        if action == 0:
+            self.myTank_T1.moveUp(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 1:
+            self.myTank_T1.moveDown(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 2:
+            self.myTank_T1.moveLeft(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 3:
+            self.myTank_T1.moveRight(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 4:
+            if not self.myTank_T1.bullet.life and self.myTank_T1.bulletNotCooling:
+                if self.isSoundEffect:
+                    self.attack_sound.play()
+                self.myTank_T1.shoot()
+                self.myTank_T1.bulletNotCooling = False
         self.allTankGroup.add(self.myTank_T1)

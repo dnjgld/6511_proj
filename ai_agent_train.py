@@ -3,7 +3,9 @@ from game_loader import Game
 import os
 
 game = Game()
-agent = TankAgent(state_size=6, action_size=5)
+enemy_num = 1
+state_size = 3*(enemy_num+1)
+agent = TankAgent(state_size=state_size, action_size=5)
 
 file_name = "tank_dqn_6.keras"
 
@@ -12,4 +14,4 @@ if os.path.exists(file_name):
     print("loaded model weights: " + file_name)
     # agent.model.summary()
 
-game.game_running_ai_trainning(agent, episodes = 500, enemy_num=1, show_training=True, file_name=file_name)
+game.game_running_ai_trainning(agent, episodes = 1000, enemy_num=enemy_num, show_training=True, file_name=file_name)
