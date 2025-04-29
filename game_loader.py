@@ -1221,13 +1221,13 @@ class Game:
         state = [
             self.myTank_T1.rect.left / 630,
             self.myTank_T1.rect.top / 630,
-            self.myTank_T1.life / 3,
+            self.myTank_T1.life,
         ]
         for enemy in self.allEnemyGroup:
             state.extend([
                 enemy.rect.left / 630,
                 enemy.rect.top / 630,
-                enemy.life / 3
+                enemy.life
             ])
         while len(state) < 3 + 3 * self.enemyNumber:
             state.append(0)
@@ -1266,85 +1266,15 @@ class Game:
         if self.remaining_enemy == 0 or getattr(self, "overGameWin", False):
             return 100 
         
-        # 3. If the player destroys the wall of base, add a negative reward
-        old_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
-        new_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
-        if new_wall_count < old_wall_count:
-            reward -= 2
-        
-        # 4. If the player's tank is destroyed, add a negative reward
-        if self.myTank_T1.life < old_state[0][2] * 3:
+        # 3. If the player's tank is destroyed, add a negative reward
+        if self.myTank_T1.life < old_state[0][2]:
             reward -= 5
 
-        # 5. If the player changes direction less than 2 times in a short period, add a small positive reward.
-        # (this is to avoid the agent keep changing directions and not moving)
-        if not hasattr(self, "recent_dirs"):
-            self.recent_dirs = deque(maxlen=10)  # record the last 10 directions
-        dir_tuple = (self.myTank_T1.dir_x, self.myTank_T1.dir_y)
-        self.recent_dirs.append(dir_tuple)
-
-        # count the number of direction changes
-        dir_changes = 0
-        last_dir = self.recent_dirs[0]
-        for d in list(self.recent_dirs)[1:]:
-            if d != last_dir:
-                dir_changes += 1
-                last_dir = d
-        if dir_changes <= 2: 
-            reward += 0.05
-
-        # 6. If the enemy tank is destroyed, add a positive reward.
-        old_enemy_count = sum([1 for i in range(3, len(old_state[0]), 3) if old_state[0][i+2] > 0])
-        new_enemy_count = sum([1 for i in range(3, len(new_state[0]), 3) if new_state[0][i+2] > 0])
+        # 4. If the enemy tank is destroyed, add a positive reward.
+        old_enemy_count = sum([old_state[0][i+2] for i in range(3, len(old_state[0]), 3) if old_state[0][i+2] > 0])
+        new_enemy_count = sum([new_state[0][i+2] for i in range(3, len(new_state[0]), 3) if new_state[0][i+2] > 0])
         if new_enemy_count < old_enemy_count:
             reward += 20
-
-        # 7. Encourage the player to move towards the enemy tanks
-        px, py = new_state[0][0], new_state[0][1]
-        min_dist = float('inf')
-        for i in range(3, len(new_state[0]), 3):
-            ex, ey, elife = new_state[0][i], new_state[0][i+1], new_state[0][i+2]
-            if elife > 0:
-                dist = abs(px - ex) + abs(py - ey)
-                if dist < min_dist:
-                    min_dist = dist
-        # the closer the enemy tank, the higher the reward
-        # Normalize the distance to [0, 1] so the reward won't be too large
-        if min_dist < float('inf'):
-            reward += 1.0/(min_dist+1)
-        
-        # 8. If the player moves to a new grid, add a small positive reward.
-        if not hasattr(self, "visited_grids"):
-            self.visited_grids = set()
-        px, py = new_state[0][0], new_state[0][1]
-        grid_x, grid_y = int(px * 5), int(py * 5)
-        grid = (grid_x, grid_y)
-        if grid not in self.visited_grids:
-            reward += 0.3
-            self.visited_grids.add(grid)
-        
-        # 9. If the player was blocked by walls, encourage them to move in the opposite direction
-        px = int(self.myTank_T1.rect.left)
-        py = int(self.myTank_T1.rect.top)
-        tank_w, tank_h = self.myTank_T1.rect.width, self.myTank_T1.rect.height
-
-        # check if the player is blocked by walls
-        left_blocked = (px <= 3) or any(b.rect.colliderect(px-1, py, 1, tank_h) for b in self.bgMap.brickGroup)
-        right_blocked = (px + tank_w >= 630) or any(b.rect.colliderect(px+tank_w, py, 1, tank_h) for b in self.bgMap.brickGroup)
-        top_blocked = (py <= 3) or any(b.rect.colliderect(px, py-1, tank_w, 1) for b in self.bgMap.brickGroup)
-        bottom_blocked = (py + tank_h >= 630) or any(b.rect.colliderect(px, py+tank_h, tank_w, 1) for b in self.bgMap.brickGroup)
-
-        # if left_blocked and right_blocked, encourage the player to move up or down
-        if left_blocked and right_blocked:
-            if self.myTank_T1.dir_y != 0:
-                reward += 0.05
-        # if top_blocked and bottom_blocked, encourage the player to move left or right
-        if top_blocked and bottom_blocked:
-            if self.myTank_T1.dir_x != 0:
-                reward += 0.05
-
-        # 10. If the player survives, return a small positive reward.
-        reward += 0.05
 
         return reward
     
@@ -1466,7 +1396,7 @@ class Game:
         print("AI Play End")
 
     # this function is used to train the AI agent
-    def game_running_ai_trainning(self, agent, episodes=500, batch_size=32, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
+    def game_running_ai_trainning(self, agent, episodes=500, batch_size=8, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
 
         for episode in range(episodes):
             print(f"\n=== Episode {episode + 1}/{episodes} ===")
@@ -1589,8 +1519,6 @@ class Game:
                     print("Episode terminated due to step limit.")
                     break
             
-            if agent.epsilon > agent.epsilon_min:
-                agent.epsilon *= agent.epsilon_decay
             end_time = time.time() 
             elapsed = end_time - start_time
             print(f"Episode {episode + 1} finished. Total reward: {total_reward}. Time: {elapsed:.2f} seconds")
