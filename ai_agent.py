@@ -48,7 +48,7 @@ class TankAgent:
 
     def load(self, path):
         # load the model
-        self.model = models.load_model(path)
+        self.model = models.load_model(path, compile=True)
 
     def save(self, path):
         # save the model

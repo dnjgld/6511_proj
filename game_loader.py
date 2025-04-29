@@ -1310,7 +1310,7 @@ class Game:
         old_enemy_count = sum([1 for i in range(5, len(old_state[0]), 5) if old_state[0][i+4] > 0])
         new_enemy_count = sum([1 for i in range(5, len(new_state[0]), 5) if new_state[0][i+4] > 0])
         if new_enemy_count < old_enemy_count:
-            reward += 5
+            reward += 15
 
         # 6. Encourage the player to move towards the enemy tanks
         px, py = new_state[0][0], new_state[0][1]
@@ -1441,7 +1441,8 @@ class Game:
         ]
         
         # let AI play the 26-35 levels of the game
-        checkpoint = random.randint(26, 35)
+        # checkpoint = random.randint(26, 35)
+        checkpoint = 2
         self.bgMap.checkpoint(checkpoint, map_num)
         for i in range(1, 4):
             enemy = enemyTank.EnemyTank(i)
@@ -1478,11 +1479,11 @@ class Game:
 
             self.execute_action(action)
 
-            for each in self.allEnemyGroup:
-                if self.enemyCouldMove:
-                    self.allTankGroup.remove(each)
-                    each.move(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-                    self.allTankGroup.add(each)
+            # for each in self.allEnemyGroup:
+            #     if self.enemyCouldMove:
+            #         self.allTankGroup.remove(each)
+            #         each.move(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+            #         self.allTankGroup.add(each)
 
             self.bullet_section()
             self.props_section()
@@ -1499,15 +1500,15 @@ class Game:
             # render the game screen
             self.render_game_screen()
 
-            self.delay -= 1
-            if not self.delay:
-                self.delay = 100
-            self.clock.tick(60)
+            # self.delay -= 1
+            # if not self.delay:
+            #     self.delay = 100
+            # self.clock.tick(60)
 
         print("AI Play End")
 
     # this function is used to train the AI agent
-    def game_running_ai_trainning(self, agent, episodes=50, batch_size=32, isEndless=False, show_training=True, file_name="default.keras"):
+    def game_running_ai_trainning(self, agent, episodes=50, batch_size=8, isEndless=False, show_training=True, file_name="default.keras"):
         episode_rewards = []
 
         for episode in range(episodes):
@@ -1571,7 +1572,8 @@ class Game:
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             ]
             
-            checkpoint = random.randint(1, 35)
+            # checkpoint = random.randint(1, 35)
+            checkpoint = 2
             self.bgMap.checkpoint(checkpoint, map_num)
             for i in range(1, 4):
                 enemy = enemyTank.EnemyTank(i)
@@ -1599,7 +1601,7 @@ class Game:
             done = False
             train_step = 0
 
-            max_steps = 3000
+            max_steps = 2000
             step_count = 0
 
             state = self.get_current_state()
@@ -1612,7 +1614,7 @@ class Game:
 
                 train_step += 1
                 step_count += 1
-                if train_step % 10 == 0:
+                if train_step % 1 == 0:
                     agent.replay(batch_size)
 
                 total_reward += reward
@@ -1695,5 +1697,4 @@ class Game:
                         self.attack_sound.play()
                     self.myTank_T1.shoot()
                     self.myTank_T1.bulletNotCooling = False
-            time.sleep(0.01)
         self.allTankGroup.add(self.myTank_T1)
