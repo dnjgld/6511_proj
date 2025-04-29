@@ -7,14 +7,15 @@ Introduction Website: https://blog.csdn.net/qq_46470984/article/details/12200375
 
 We will mainly do edition on:<br>
 - game_loader.py<br>
-- main.py<br>
 
 We created:<br>
 - ai_agent.py<br>
 This file implement the Deep Q-Network (DQN) agent for tankwar game. We referenced the program:<br>
 https://github.com/keon/deep-q-learning/blob/master/dqn_batch.py<br>
 We currently didn't make changes to it but we may modify it later.<br>
-- ai_agent_play.py
+- ai_agent_play.py<br>
+- ai_agent_train.py<br>
+- tank_dqn.keras<br>
 
 # Report:
 
@@ -75,13 +76,12 @@ This mirrors the outline already in the proposal but fills in the details that t
 ## mathematical description
 
 ### state space:<br>
-s = (px, py, d, l, e_{i,x}, e_{i,y}, e_{i,d}, e_{i,l}), j = {1, 2, 3} <br>
-(We now have three enemy tanks in ai_play)<br>
+s = (px, py, l, e_{i,x}, e_{i,y}, e_{i,l}), i = {1} <br>
+(We decide to remove the direction which may not contribute much to our training)
+(We now consider three enemy tanks in our final ai_play)<br>
 px, py: player's tank position<br>
-d: player's tank direction<br>
 l: player's tank life<br>
 e_{i,x}, e_{i,y}: enemy i's tank position<br>
-e_{i,d}: enemy i's tank direction<br>
 e_{i,l}: enemy i's tank life<br>
 
 ### action space:<br>
@@ -103,7 +103,7 @@ so the observation is:<br>
 o = s'
 
 ## State Space Implementation
-In our program, the state sapce is represented by a fixed-length list of numbers that describe the key parts of the game at each moment. We implement this in the Game class with the method get_current_state(). First it takes the player tank's position (normalized x and y), movement direction (dx,dy), and remaining life. Then it loops over up to three enemy tanks and adds each one's relative position (dx,, dy), direction, and life. If there are fewer than three enemies, the list is padded with zeros so every state has the same size (20 values in total).
+In our program, the state sapce is represented by a fixed-length list of numbers that describe the key parts of the game at each moment. We implement this in the Game class with the method get_current_state(). First it takes the player tank's position (normalized x and y) and remaining life. Then it loops over up to three enemy tanks and adds each one's relative position (dx,, dy), and life. If the enemy was destroyed during playing, the list is padded with zeros so every state has the same size (3*(enemy_num+1) values in total).
 
 To generate successor states when an action is taken, we use get_successor_state(action). This method first saves the old state, applies the given action through the game's movement, collision, and display logic, and then calls get_current_state() again to get the new state. It also computes the reward for the transition and checks if the game is over. Finally, it returns four items: the new state vector, the reward, a done flag(true if the game ended), and an observation. In our setup, the observation is exactly the same list of numbers as the new state.
 
