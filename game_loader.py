@@ -1079,6 +1079,7 @@ class Game:
             if not self.delay:
                 self.delay = 100
             pygame.display.flip()
+            self.clock.tick(60)
             
 
     # 游戏运行函数 （单挑模式）----------------------------------------------------------
@@ -1207,6 +1208,8 @@ class Game:
             if not self.delay:
                 self.delay = 100
             pygame.display.flip()
+
+            self.clock.tick(60)
 
             
 
@@ -1484,11 +1487,10 @@ class Game:
         print("AI Play End")
 
     # this function is used to train the AI agent
-    def game_running_ai_trainning(self, agent, episodes=50, batch_size=32, isEndless=False,show_training=True):
-        episode_rewards = []
+    def game_running_ai_trainning(self, agent, episodes=500, batch_size=8, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
 
         for episode in range(episodes):
-            print(f"/n=== Episode {episode + 1}/{episodes} ===")
+            print(f"\n=== Episode {episode + 1}/{episodes} ===")
             start_time = time.time() 
 
             self.allTankGroup.empty()
@@ -1548,9 +1550,11 @@ class Game:
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             ]
             
+            # checkpoint = random.randint(1, 35)
+            # Here I just set the checkpoint to 1
             checkpoint = 1
             self.bgMap.checkpoint(checkpoint, map_num)
-            for i in range(1, 4):
+            for i in range(1, enemy_num + 1):
                 enemy = enemyTank.EnemyTank(i)
                 self.allTankGroup.add(enemy)
                 self.allEnemyGroup.add(enemy)
@@ -1567,7 +1571,7 @@ class Game:
             self.overGameWin = False
             self.enemyCouldMove = True
             self.remaining_enemy = len(self.allEnemyGroup)
-            self.enemyNumber = len(self.allEnemyGroup)
+            self.enemyNumber = enemy_num
             self.invincible_T1 = 0
             self.invincible_T2 = 0
             self.iron_time = 0
@@ -1576,7 +1580,7 @@ class Game:
             done = False
             train_step = 0
 
-            max_steps = 3000
+            max_steps = 1000
             step_count = 0
 
             state = self.get_current_state()
@@ -1589,7 +1593,8 @@ class Game:
 
                 train_step += 1
                 step_count += 1
-                if train_step % 50 == 0:
+                # I changed to train the agent every 10 step
+                if train_step % 10 == 0:
                     agent.replay(batch_size)
 
                 total_reward += reward
@@ -1597,7 +1602,8 @@ class Game:
                 if show_training:
                     self.render_game_screen()
 
-               
+                # I removed the delay and clock.tick(60) to speed up the training process
+                # self.clock.tick(60)
                 
                 if step_count >= max_steps:
                     print("Episode terminated due to step limit.")
@@ -1605,32 +1611,24 @@ class Game:
             
             if agent.epsilon > agent.epsilon_min:
                 agent.epsilon *= agent.epsilon_decay
+
             end_time = time.time() 
             elapsed = end_time - start_time
             print(f"Episode {episode + 1} finished. Total reward: {total_reward}. Time: {elapsed:.2f} seconds")
-            episode_rewards.append(total_reward)
-            agent.save("tank_dqn_final_1_35.keras")
+            agent.save(file_name)
             print("Epsilon:", agent.epsilon)
             print("Model saved.")
 
-        agent.save("tank_dqn_final_1_35.keras")
+        agent.save(file_name)
         print("Final model saved.")
-        self.plot_rewards(episode_rewards)
-
-    def plot_rewards(self, rewards):
-        plt.figure(figsize=(10, 5))
-        plt.plot(rewards, label='Reward per Episode')
-        plt.xlabel('Episode')
-        plt.ylabel('Total Reward')
-        plt.title('Training Progress: Reward Curve')
-        plt.legend()
-        plt.grid()
-        plt.show()
 
     # the game screen rendering function is pulled out from the game_running function
     def render_game_screen(self):
+        # render the background
         self.screen.blit(self.background_image, (0, 0))
         self.screen.blit(self.background_image_level_mode, (630, 0))
+
+        # render the elements on the screen
         for each in self.bgMap.brickGroup:
             self.screen.blit(each.image, each.rect)
         for each in self.bgMap.ironGroup:
@@ -1643,6 +1641,8 @@ class Game:
             self.screen.blit(each.image, each.rect)
         for each in self.bgMap.treeGroup:
             self.screen.blit(each.image, each.rect)
+
+        # render bullet explosion effects
         for each in self.bulletBoomGroup:
             if each.times > 0:
                 each.times -= 1
@@ -1650,27 +1650,43 @@ class Game:
                     self.special_effect.SE_boom(self.screen, each.x, each.y, each.times)
             else:
                 self.bulletBoomGroup.remove(each)
+        # render the props
         self.props_section()
+        # render the tanks
         self.tank_display_section()
+
+        # render the life icons for the player's tank
+        for i in range(self.myTank_T1.life):
+            x = 680 + i * 20
+            y = 378 + 5  
+            self.screen.blit(self.heart_icon, (x, y))
+
+        # render the life icons for the enemy tanks
+        for i in range(self.remaining_enemy):
+            if i < 10:
+                x = 630 + 25
+                y = 80 + i * 30
+            else:
+                x = 630 + 65
+                y = 80 + (i - 10) * 30
+            self.screen.blit(self.enemy_icon, (x, y))
         pygame.display.flip()
 
     # update the game state based on the action taken
-    def execute_action(self, action, repeat=1):
+    def execute_action(self, action):
         self.allTankGroup.remove(self.myTank_T1)
-        for _ in range(repeat):
-            if action == 0:
-                self.myTank_T1.moveUp(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-            elif action == 1:
-                self.myTank_T1.moveDown(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-            elif action == 2:
-                self.myTank_T1.moveLeft(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-            elif action == 3:
-                self.myTank_T1.moveRight(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-            elif action == 4:
-                if not self.myTank_T1.bullet.life and self.myTank_T1.bulletNotCooling:
-                    if self.isSoundEffect:
-                        self.attack_sound.play()
-                    self.myTank_T1.shoot()
-                    self.myTank_T1.bulletNotCooling = False
-            #time.sleep(0.01)
+        if action == 0:
+            self.myTank_T1.moveUp(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 1:
+            self.myTank_T1.moveDown(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 2:
+            self.myTank_T1.moveLeft(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 3:
+            self.myTank_T1.moveRight(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
+        elif action == 4:
+            if not self.myTank_T1.bullet.life and self.myTank_T1.bulletNotCooling:
+                if self.isSoundEffect:
+                    self.attack_sound.play()
+                self.myTank_T1.shoot()
+                self.myTank_T1.bulletNotCooling = False
         self.allTankGroup.add(self.myTank_T1)
