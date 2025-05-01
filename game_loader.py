@@ -1253,6 +1253,8 @@ class Game:
 
     # function to calculate the reward based on the state transition
     def reward_calculation(self, old_state, new_state):
+        # Added: Record last remaining enemy count
+        old_remain = getattr(self, "old_remaining_enemy", self.remaining_enemy)
         reward = 0
         # test reward function
 
@@ -1337,7 +1339,11 @@ class Game:
                         found_enemy_on_line = True
                         break
             if found_enemy_on_line:
-                reward += 1.0 
+                reward += 1.0
+            else:
+                #“Firing a blind shot” is slightly penalized to avoid frequent and indiscriminate firing.
+                reward -= 0.5
+
 
         # 7. If the player moves to a new grid, return a small positive reward.
         if not hasattr(self, "visited_grids"):
@@ -1371,6 +1377,15 @@ class Game:
 
         # 9. If the player survives, return a small positive reward.
         reward += 0.05
+
+        # Added: Bonus +5 for each enemy destroyed.
+        killed = old_remain - self.remaining_enemy
+        if killed > 0:
+            reward += killed * 5
+
+        # Save the remaining enemies of the round for the next calculation
+        self.old_remaining_enemy = self.remaining_enemy
+
         return reward
     
     # We create a function similar to game_running and game_running_singled_out func to let AI play the game 
