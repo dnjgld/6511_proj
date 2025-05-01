@@ -1256,6 +1256,10 @@ class Game:
         # Added: Record last remaining enemy count
         old_remain = getattr(self, "old_remaining_enemy", self.remaining_enemy)
         reward = 0
+        if self.remaining_enemy < old_remain:
+            kills = old_remain - self.remaining_enemy
+            reward += 5 * kills
+
         # test reward function
 
         # 1. If the game is over, return a large negative reward.
@@ -1342,7 +1346,7 @@ class Game:
                 reward += 1.0
             else:
                 #“Firing a blind shot” is slightly penalized to avoid frequent and indiscriminate firing.
-                reward -= 0.5
+                reward -= 2.0
 
 
         # 7. If the player moves to a new grid, return a small positive reward.
@@ -1377,11 +1381,6 @@ class Game:
 
         # 9. If the player survives, return a small positive reward.
         reward += 0.05
-
-        # Added: Bonus +5 for each enemy destroyed.
-        killed = old_remain - self.remaining_enemy
-        if killed > 0:
-            reward += killed * 5
 
         # Save the remaining enemies of the round for the next calculation
         self.old_remaining_enemy = self.remaining_enemy
@@ -1705,5 +1704,5 @@ class Game:
                         self.attack_sound.play()
                     self.myTank_T1.shoot()
                     self.myTank_T1.bulletNotCooling = False
-            time.sleep(0.01)
+            #time.sleep(0.01)
         self.allTankGroup.add(self.myTank_T1)
