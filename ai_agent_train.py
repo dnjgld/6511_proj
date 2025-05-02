@@ -9,4 +9,4 @@ if os.path.exists("tank_dqn_final_1_35.keras"):
     agent.load("tank_dqn_final_1_35.keras")
     print("loaded model weights: tank_dqn_final_1_35.keras")
 
-game.game_running_ai_trainning(agent, episodes=1000, show_training=True)
+game.game_running_ai_trainning(agent, episodes=1000, show_training=False)

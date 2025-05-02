@@ -8,18 +8,18 @@ class TankAgent:
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=10000)
-        self.gamma = 0.95
-        self.learning_rate = 0.005
+        self.gamma = 0.95  
         self.epsilon = epsilon
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.99
+        self.epsilon_decay = 0.995
+        self.learning_rate = 0.001
         self.model = self._build_model()
 
     def _build_model(self):
         model = models.Sequential()
         model.add(layers.Input(shape=(self.state_size,)))
-        model.add(layers.Dense(64, activation='relu'))
-        model.add(layers.Dense(64, activation='relu'))
+        model.add(layers.Dense(128, activation='relu'))
+        model.add(layers.Dense(128, activation='relu'))
         model.add(layers.Dense(self.action_size, activation='linear'))
         model.compile(loss='mse', optimizer=optimizers.Adam(learning_rate=self.learning_rate))
         return model
