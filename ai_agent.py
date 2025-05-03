@@ -1,7 +1,10 @@
+# Original resource: https://github.com/keon/deep-q-learning/blob/master/dqn_batch.py
+
 import numpy as np
 import random
 from collections import deque
 from tensorflow.keras import layers, models, optimizers
+import pickle
 
 # a agent build on DQN
 class TankAgent:
@@ -15,15 +18,23 @@ class TankAgent:
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
         self.model = self._build_model()
+        self.target_model = self._build_model()
+        self.update_target_model()
 
     def _build_model(self):
         model = models.Sequential()
         model.add(layers.Input(shape=(self.state_size,)))
-        model.add(layers.Dense(24, activation='relu'))
-        model.add(layers.Dense(24, activation='relu'))
+        # we enlarge the model to 128 neurons in two laters
+        model.add(layers.Dense(128, activation='relu'))
+        model.add(layers.Dense(128, activation='relu'))
         model.add(layers.Dense(self.action_size, activation='linear'))
         model.compile(loss='mse', optimizer=optimizers.Adam(learning_rate=self.learning_rate))
         return model
+
+    # update the target model with the weights of the main model
+    # this is from double DQN
+    def update_target_model(self):
+        self.target_model.set_weights(self.model.get_weights())
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
@@ -39,12 +50,14 @@ class TankAgent:
             return
         minibatch = random.sample(self.memory, batch_size)
         for state, action, reward, next_state, done in minibatch:
-            target = reward
-            if not done:
-                target = reward + self.gamma * np.amax(self.model.predict(next_state, verbose=0)[0])
-            target_f = self.model.predict(state, verbose=0)
-            target_f[0][action] = target
-            self.model.fit(state, target_f, epochs=1, verbose=0)
+            target = self.model.predict(state, verbose=0)
+            if done:
+                target[0][action] = reward
+            else:
+                next_action = np.argmax(self.model.predict(next_state, verbose=0)[0])
+                t = self.target_model.predict(next_state, verbose=0)[0][next_action]
+                target[0][action] = reward + self.gamma * t
+            self.model.fit(state, target, epochs=1, verbose=0)
     
     def load(self, path):
         # load the model
@@ -53,3 +66,14 @@ class TankAgent:
     def save(self, path):
         # save the model
         self.model.save(path)
+        
+    def save_replay_buffer(self, path):
+        with open(path, 'wb') as f:
+            pickle.dump(self.memory, f)
+
+    def load_replay_buffer(self, path):
+        try:
+            with open(path, 'rb') as f:
+                self.memory = pickle.load(f)
+        except FileNotFoundError:
+            print("No replay buffer file found, starting fresh.")
