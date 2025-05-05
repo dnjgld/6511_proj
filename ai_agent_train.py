@@ -3,10 +3,15 @@ from game_loader import Game
 import os
 
 game = Game()
-agent = TankAgent(state_size=20, action_size=5, epsilon=1.0)
+enemy_num = 1
+state_size = 3*(enemy_num+1)
+agent = TankAgent(state_size=state_size, action_size=5)
 
-if os.path.exists("tank_dqn_final_1_35.keras"):
-    agent.load("tank_dqn_final_1_35.keras")
-    print("loaded model weights: tank_dqn_final_1_35.keras")
+file_name = "tank_dqn_6.keras"
 
-game.game_running_ai_trainning(agent, episodes=1000, show_training=False)
+if os.path.exists(file_name):
+    agent.load(file_name)
+    print("loaded model weights: " + file_name)
+    # agent.model.summary()
+
+game.game_running_ai_trainning(agent, episodes = 1000, enemy_num=enemy_num, show_training=True, file_name=file_name)

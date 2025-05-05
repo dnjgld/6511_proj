@@ -1,14 +1,15 @@
 import numpy as np
 import random
 from collections import deque
-from tensorflow.keras import layers, models, optimizers
+from tensorflow.keras import models, layers, optimizers
 
+# a agent build on DQN
 class TankAgent:
-    def __init__(self, state_size, action_size, epsilon=1.0):
+    def __init__(self, state_size, action_size, epsilon = 1.0):
         self.state_size = state_size
         self.action_size = action_size
-        self.memory = deque(maxlen=10000)
-        self.gamma = 0.95  
+        self.memory = deque(maxlen=2000)
+        self.gamma = 0.95  # discount rate
         self.epsilon = epsilon
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
@@ -18,8 +19,8 @@ class TankAgent:
     def _build_model(self):
         model = models.Sequential()
         model.add(layers.Input(shape=(self.state_size,)))
-        model.add(layers.Dense(128, activation='relu'))
-        model.add(layers.Dense(128, activation='relu'))
+        model.add(layers.Dense(24, activation='relu'))
+        model.add(layers.Dense(24, activation='relu'))
         model.add(layers.Dense(self.action_size, activation='linear'))
         model.compile(loss='mse', optimizer=optimizers.Adam(learning_rate=self.learning_rate))
         return model
@@ -28,31 +29,27 @@ class TankAgent:
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
-        # 将列表状态转换为数组形状 (1, state_size)
-        state_arr = np.array(state, dtype=np.float32).reshape(1, -1)
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
-        q_values = self.model.predict(state_arr, verbose=0)[0]
-        return np.argmax(q_values)
+        act_values = self.model.predict(state, verbose=0)
+        return np.argmax(act_values[0])
 
     def replay(self, batch_size):
         if len(self.memory) < batch_size:
             return
         minibatch = random.sample(self.memory, batch_size)
         for state, action, reward, next_state, done in minibatch:
-            state_arr = np.array(state, dtype=np.float32).reshape(1, -1)
-            next_arr = np.array(next_state, dtype=np.float32).reshape(1, -1)
             target = reward
             if not done:
-                target = reward + self.gamma * np.max(self.model.predict(next_arr, verbose=0)[0])
-            target_f = self.model.predict(state_arr, verbose=0)
+                target = reward + self.gamma * np.amax(self.model.predict(next_state, verbose=0)[0])
+            target_f = self.model.predict(state, verbose=0)
             target_f[0][action] = target
-            self.model.fit(state_arr, target_f, epochs=1, verbose=0)
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
+            self.model.fit(state, target_f, epochs=1, verbose=0)
 
     def load(self, path):
-        self.model = models.load_model(path)
+        # load the model
+        self.model = models.load_model(path, compile=True)
 
     def save(self, path):
+        # save the model
         self.model.save(path)

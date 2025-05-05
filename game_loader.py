@@ -1222,144 +1222,165 @@ class Game:
 
     # function to get the current state of the game
     def get_current_state(self):
-        # 构建状态：相对坐标、方向、生命值
-        my_x = self.myTank_T1.rect.left / 630
-        my_y = self.myTank_T1.rect.top / 630
-        state = [my_x, my_y,
-                 self.myTank_T1.dir_x, self.myTank_T1.dir_y,
-                 self.myTank_T1.life / 3]
+        state = [
+            self.myTank_T1.rect.left / 630,
+            self.myTank_T1.rect.top / 630,
+            self.myTank_T1.life / 3,
+        ]
         for enemy in self.allEnemyGroup:
-            dx = (enemy.rect.left - self.myTank_T1.rect.left) / 630
-            dy = (enemy.rect.top - self.myTank_T1.rect.top) / 630
-            state.extend([dx, dy,
-                          enemy.dir_x, enemy.dir_y,
-                          enemy.life / 3])
-        # 填充至固定长度
-        while len(state) < self.state_size:
+            state.extend([
+                enemy.rect.left / 630,
+                enemy.rect.top / 630,
+                enemy.life / 3
+            ])
+        while len(state) < 3 + 3 * self.enemyNumber:
             state.append(0)
-        return state
+        return np.array(state, dtype=np.float32).reshape(1, -1)
     
     # function to get successor state after applying the action
     def get_successor_state(self, action):
+        """
+        Get the successor state after applying the action.
+        Returns a new state object.
+        """
+        # Create a copy of the current state
         old_state = self.get_current_state()
-        # 记录最后一次 action
-        self.last_action = action
         self.execute_action(action)
         self.event_section()
         self.bullet_section()
         self.props_section()
         self.tank_display_section()
+
         new_state = self.get_current_state()
         reward = self.reward_calculation(old_state, new_state)
         done = (self.remaining_enemy == 0) or self.overGameLoss or (self.myTank_T1.life <= 0)
-        return new_state, reward, done, new_state
+        observation = new_state
+        return new_state, reward, done, observation
 
     # function to calculate the reward based on the state transition
     def reward_calculation(self, old_state, new_state):
-    # 0. Time-per-step penalties to promote speedy clearance
-        reward = -0.01
+        reward = 0
+        # test reward function
 
-    # 1. Kill bonus (based on the remaining_enemy recorded in the previous frame)
-        old_remain = getattr(self, "old_remaining_enemy", self.remaining_enemy)
-        if self.remaining_enemy < old_remain:
-            kills = old_remain - self.remaining_enemy
-            reward += 5.0 * kills
-
-    # 2. Pass or Fail: Direct return to large rewards/penalties
-        if getattr(self, "overGameLoss", False):
-            # Fail
-            self.old_remaining_enemy = self.remaining_enemy
-            self.old_wall_count = getattr(self, "old_wall_count", None)
-            return -10.0
+        # 1. If the game is over, return a large negative reward.
+        if self.overGameLoss:
+            return -100
+        
         if self.remaining_enemy == 0 or getattr(self, "overGameWin", False):
-            # Pass
-            self.old_remaining_enemy = self.remaining_enemy
-            self.old_wall_count = getattr(self, "old_wall_count", None)
-            return 10.0
+            return 100 
+        
+        # 2. If the player destroys the wall of base, return a negative reward.
+        old_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
+        new_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
+        if new_wall_count < old_wall_count:
+            reward -= 2
+        
+        # 3. If the player's tank is destroyed, return a negative reward.
+        if self.myTank_T1.life < old_state[0][2] * 3:
+            reward -= 3
 
-    # 3. Penalty for vandalism of base walls
-    #    First read the number of walls from the previous frame
-        prev_wall = getattr(self, "old_wall_count", 
-            len(self.bgMap.brickGroup))
-    #    The number of walls in the current frame
-        curr_wall = len(self.bgMap.brickGroup)
-        if curr_wall < prev_wall:
-            reward -= 2.0 * (prev_wall - curr_wall)
-
-    # 4. Penalty for being hit (our life is reduced)
-    #   old_state[4] represents the life/3 of the previous frame,  new_state[4] same thing
-        old_life = old_state[4] * 3
-        curr_life = getattr(self.myTank_T1, "life", old_life)
-        if curr_life < old_life:
-            reward -= 3.0
-
-    # 5. Direction Change and Blind Fire Reward/Penalty
-    #    5.1 Direction changes (too much back and forth won't work, too little gives a little encouragement)
-        from collections import deque
+        # 4. If the player changes direction more than 4 times in a short period, return a negative reward.
         if not hasattr(self, "recent_dirs"):
-            self.recent_dirs = deque(maxlen=10)
+            self.recent_dirs = deque(maxlen=10)  # record the last 10 directions
         dir_tuple = (self.myTank_T1.dir_x, self.myTank_T1.dir_y)
         self.recent_dirs.append(dir_tuple)
 
-        dir_changes = sum(
-            1 for a, b in zip(self.recent_dirs, list(self.recent_dirs)[1:])
-            if a != b
-        )
-        if dir_changes <= 2:
+        # count the number of direction changes
+        dir_changes = 0
+        last_dir = self.recent_dirs[0]
+        for d in list(self.recent_dirs)[1:]:
+            if d != last_dir:
+                dir_changes += 1
+                last_dir = d
+        # if the player changes direction less than 2 times, return a small positive reward
+        if dir_changes <= 2: 
             reward += 0.05
+        
+        # 5. If the agent does not move for a long time, return a negative reward.
+        if not hasattr(self, "recent_positions"):
+            from collections import deque
+            self.recent_positions = deque(maxlen=30)
+        px, py = new_state[0][0], new_state[0][1]
+        self.recent_positions.append((round(px, 2), round(py, 2)))
+        if len(self.recent_positions) == 30:
+            unique_pos = len(set(self.recent_positions))
+            if unique_pos <= 3: 
+                reward -= 3
 
-    #    5.2 Shooting incentives (extra points for shooting in a straight line with a target, penalty for shooting blind without a target)
+        # 5. If the enemy tank is destroyed, return a positive reward.
+        old_enemy_count = sum([1 for i in range(3, len(old_state[0]), 3) if old_state[0][i+2] > 0])
+        new_enemy_count = sum([1 for i in range(3, len(new_state[0]), 3) if new_state[0][i+2] > 0])
+        if new_enemy_count < old_enemy_count:
+            reward += 20
+
+        # 6. Encourage the player to move towards the enemy tanks
+        px, py = new_state[0][0], new_state[0][1]
+        min_dist = float('inf')
+        for i in range(3, len(new_state[0]), 3):
+            ex, ey, elife = new_state[0][i], new_state[0][i+1], new_state[0][i+2]
+            if elife > 0:
+                dist = abs(px - ex) + abs(py - ey)
+                if dist < min_dist:
+                    min_dist = dist
+        # the closer the enemy tank, the higher the reward
+        # Normalize the distance to [0, 1] so the reward won't be too large
+        if min_dist < float('inf'):
+            reward += 1.0/(min_dist+1)
+            
         if hasattr(self, "last_action") and self.last_action == 4:
             px, py = self.myTank_T1.rect.left, self.myTank_T1.rect.top
             dir_x, dir_y = self.myTank_T1.dir_x, self.myTank_T1.dir_y
-            hit_line = False
+            found_enemy_on_line = False
             for enemy in self.allEnemyGroup:
                 ex, ey = enemy.rect.left, enemy.rect.top
-            # In the same line or column and in the direction of fire
-                if dir_y == 0 and py == ey and ((dir_x>0 and ex>px) or (dir_x<0 and ex<px)):
-                    hit_line = True; break
-                if dir_x == 0 and px == ex and ((dir_y>0 and ey>py) or (dir_y<0 and ey<py)):
-                    hit_line = True; break
-            reward += (1.0 if hit_line else -0.5)
+                if dir_y == 0 and py == ey:
+                    if (dir_x > 0 and ex > px) or (dir_x < 0 and ex < px):
+                        found_enemy_on_line = True
+                        break
+                if dir_x == 0 and px == ex:
+                    if (dir_y > 0 and ey > py) or (dir_y < 0 and ey < py):
+                        found_enemy_on_line = True
+                        break
+            if found_enemy_on_line:
+                reward += 1.0 
 
-        # 6. Stuck and not moving penalty
-        if not hasattr(self, "recent_positions"):
-            self.recent_positions = deque(maxlen=30)
-        px, py = new_state[0], new_state[1]
-        self.recent_positions.append((round(px,2), round(py,2)))
-        if len(self.recent_positions) == 30 and len(set(self.recent_positions)) <= 3:
-            reward -= 2.0
-
-    # 7. Encourage approach to the nearest enemy
-        px, py = new_state[0], new_state[1]
-        min_dist = min(
-            abs(px - new_state[i]) + abs(py - new_state[i+1])
-            for i in range(5, len(new_state), 5)
-            if new_state[i+4] > 0
-        ) if len(new_state) > 5 else None
-        if min_dist is not None:
-            reward += 1.0 / (min_dist + 1.0)
-
-    # 8. New Grid Exploration Rewards
+        # 7. If the player moves to a new grid, return a small positive reward.
         if not hasattr(self, "visited_grids"):
             self.visited_grids = set()
-        grid = (int(px)// (self.myTank_T1.rect.width),
-                int(py)// (self.myTank_T1.rect.height))
+        px, py = new_state[0][0], new_state[0][1]
+        grid_x, grid_y = int(px * 10), int(py * 10)  # 10x10网格
+        grid = (grid_x, grid_y)
         if grid not in self.visited_grids:
             reward += 0.3
             self.visited_grids.add(grid)
+        
+        # 8. If the player was blocked by walls, encourage them to move in the opposite direction
+        px = int(self.myTank_T1.rect.left)
+        py = int(self.myTank_T1.rect.top)
+        tank_w, tank_h = self.myTank_T1.rect.width, self.myTank_T1.rect.height
 
-        # 9. Survival bonus
+        # check if the player is blocked by walls
+        left_blocked = (px <= 3) or any(b.rect.colliderect(px-1, py, 1, tank_h) for b in self.bgMap.brickGroup)
+        right_blocked = (px + tank_w >= 630) or any(b.rect.colliderect(px+tank_w, py, 1, tank_h) for b in self.bgMap.brickGroup)
+        top_blocked = (py <= 3) or any(b.rect.colliderect(px, py-1, tank_w, 1) for b in self.bgMap.brickGroup)
+        bottom_blocked = (py + tank_h >= 630) or any(b.rect.colliderect(px, py+tank_h, tank_w, 1) for b in self.bgMap.brickGroup)
+
+        # if left_blocked and right_blocked, encourage the player to move up or down
+        if left_blocked and right_blocked:
+            if self.myTank_T1.dir_y != 0:
+                reward += 0.5
+        # if top_blocked and bottom_blocked, encourage the player to move left or right
+        if top_blocked and bottom_blocked:
+            if self.myTank_T1.dir_x != 0:
+                reward += 0.5
+
+        # 9. If the player survives, return a small positive reward.
         reward += 0.05
-
-        # -- Update history for next frame --
-        self.old_remaining_enemy = self.remaining_enemy
-        self.old_wall_count = curr_wall
 
         return reward
     
     # We create a function similar to game_running and game_running_singled_out func to let AI play the game 
-    def game_running_ai_play(self, agent, isEndless=False):
+    def game_running_ai_play(self, agent, isEndless=False, enemy_num=1):
         """
         AI play function 
         """
@@ -1423,7 +1444,7 @@ class Game:
         # let AI play the 26-35 levels of the game
         checkpoint = 1
         self.bgMap.checkpoint(checkpoint, map_num)
-        for i in range(1, 4):
+        for i in range(1, enemy_num + 1):
             enemy = enemyTank.EnemyTank(i)
             self.allTankGroup.add(enemy)
             self.allEnemyGroup.add(enemy)
@@ -1683,10 +1704,35 @@ class Game:
             self.myTank_T1.moveLeft(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
         elif action == 3:
             self.myTank_T1.moveRight(self.allTankGroup, self.bgMap.brickGroup, self.bgMap.ironGroup, self.bgMap.riverGroup)
-        elif action == 4:
-            if not self.myTank_T1.bullet.life and self.myTank_T1.bulletNotCooling:
-                if self.isSoundEffect:
-                    self.attack_sound.play()
-                self.myTank_T1.shoot()
-                self.myTank_T1.bulletNotCooling = False
+        elif action == 4:  # fire action
+            # Calculate the relative position of enemy tanks
+            px, py = self.myTank_T1.rect.left, self.myTank_T1.rect.top
+            target_enemy = None
+            min_distance = float('inf')
+            # Find my nearest enemy.
+            for enemy in self.allEnemyGroup:
+                ex, ey = enemy.rect.left, enemy.rect.top
+                distance = abs(px - ex) + abs(py - ey)
+                if distance < min_distance:
+                    min_distance = distance
+                    target_enemy = enemy
+            
+            if target_enemy:
+                ex, ey = target_enemy.rect.left, target_enemy.rect.top
+                if px == ex:  # Fire vertically.
+                    if py < ey:
+                        self.myTank_T1.dir_x, self.myTank_T1.dir_y = 0, 1  # downward
+                    else:
+                        self.myTank_T1.dir_x, self.myTank_T1.dir_y = 0, -1  # upward
+                elif py == ey:  # Horizontal fire
+                    if px < ex:
+                        self.myTank_T1.dir_x, self.myTank_T1.dir_y = 1, 0  # right
+                    else:
+                        self.myTank_T1.dir_x, self.myTank_T1.dir_y = -1, 0  # left
+
+                if not self.myTank_T1.bullet.life and self.myTank_T1.bulletNotCooling:
+                    if self.isSoundEffect:
+                        self.attack_sound.play()
+                    self.myTank_T1.shoot()
+                    self.myTank_T1.bulletNotCooling = False
         self.allTankGroup.add(self.myTank_T1)
