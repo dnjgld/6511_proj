@@ -5,7 +5,7 @@ import os
 game = Game()
 enemy_num = 1
 state_size = 3*(enemy_num+1)
-agent = TankAgent(state_size=state_size, action_size=5, epsilon=0.01)
+agent = TankAgent(state_size=state_size, action_size=5, epsilon=0.0)
 
 file_name = "tank_dqn_6.keras"
 if os.path.exists(file_name):

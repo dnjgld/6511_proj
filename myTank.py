@@ -45,9 +45,9 @@ class MyTank(pygame.sprite.Sprite):
 
         # 根据玩家不同放置位置也不同
         if playerNumber == 1:
-            self.rect.left, self.rect.top = 3 + 24 * 8, 3 + 24 * 24
+            self.rect.left, self.rect.top = 3 + 24 * 8, 3 + 14 * 24
         if playerNumber == 2:
-            self.rect.left, self.rect.top = 3 + 24 * 16, 3 + 24 * 24
+            self.rect.left, self.rect.top = 3 + 24 * 16, 3 + 14 * 24
 
         # 坦克速度   坦克方向   坦克生命   子弹冷却
         self.speed = 3
@@ -139,7 +139,7 @@ class MyTank(pygame.sprite.Sprite):
         self.tank_R0 = self.tank.subsurface((0, 48), (48, 48))
         self.tank_R1 = self.tank.subsurface((48, 48), (48, 48))
         self.dir_x, self.dir_y = 0, 1
-        if self.rect.bottom > 630 - 3:
+        if self.rect.bottom > 390 - 3:
             self.rect = self.rect.move(self.speed * 0, self.speed * -1)
             return True
         if pygame.sprite.spritecollide(self, brickGroup, False, None) \
@@ -175,7 +175,7 @@ class MyTank(pygame.sprite.Sprite):
         self.tank_R0 = self.tank.subsurface((0, 144), (48, 48))
         self.tank_R1 = self.tank.subsurface((48, 144), (48, 48))
         self.dir_x, self.dir_y = 1, 0
-        if self.rect.right > 630 - 3:
+        if self.rect.right > 294 - 3:
             self.rect = self.rect.move(self.speed * -1, self.speed * 0)
             return True
         if pygame.sprite.spritecollide(self, brickGroup, False, None) \

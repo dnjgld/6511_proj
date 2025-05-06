@@ -1,4 +1,3 @@
-from collections import deque
 import pygame
 import sys
 import wall
@@ -8,10 +7,12 @@ import food
 import maps
 import map_loader
 import special_effects
-import numpy as np
+#################################
 import random
 import time
-import matplotlib.pyplot as plt
+import pickle
+import numpy as np
+from collections import deque
 """
 修改时间：2021.12.15
 修改人：2019051604048 詹孝东
@@ -31,7 +32,7 @@ class Game:
         # 用于加载和播放声音的 pygame 模块
         pygame.mixer.init()
         # 加载屏幕
-        resolution = 750, 630
+        resolution = 414, 390
         self.screen = pygame.display.set_mode(resolution)
         pygame.display.set_caption("Tank War ")
         # 加载图片,音乐,音效.
@@ -1215,29 +1216,29 @@ class Game:
 ##############################################################
 ##############################################################
 
+
     # function to get the current state of the game
     def get_current_state(self):
         state = [
-            self.myTank_T1.rect.left / 630,
-            self.myTank_T1.rect.top / 630,
-            self.myTank_T1.life / 3,
+            self.myTank_T1.rect.left / 294,
+            self.myTank_T1.rect.top / 390,
+            self.myTank_T1.life,
         ]
         for enemy in self.allEnemyGroup:
             state.extend([
-                enemy.rect.left / 630,
-                enemy.rect.top / 630,
-                enemy.life / 3
+                enemy.rect.left / 294,
+                enemy.rect.top / 390,
+                enemy.life
             ])
         while len(state) < 3 + 3 * self.enemyNumber:
             state.append(0)
+        print("state:", state)
         return np.array(state, dtype=np.float32).reshape(1, -1)
     
     # function to get successor state after applying the action
+    # Returns a new state object, reward, done flag, and observation
     def get_successor_state(self, action):
-        """
-        Get the successor state after applying the action.
-        Returns a new state object.
-        """
+
         # Create a copy of the current state
         old_state = self.get_current_state()
         self.execute_action(action)
@@ -1250,6 +1251,7 @@ class Game:
         reward = self.reward_calculation(old_state, new_state)
         done = (self.remaining_enemy == 0) or self.overGameLoss or (self.myTank_T1.life <= 0)
         observation = new_state
+
         return new_state, reward, done, observation
 
     # function to calculate the reward based on the state transition
@@ -1261,119 +1263,46 @@ class Game:
         if self.overGameLoss:
             return -100
         
+        # 2. If the player wins the game, return a large positive reward. 
+        # (I am considering giving a value according to the time taken to win the game)
         if self.remaining_enemy == 0 or getattr(self, "overGameWin", False):
-            return 100 
+            return 500 
         
-        # 2. If the player destroys the wall of base, return a negative reward.
-        old_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
-        new_wall_count = len([b for b in self.bgMap.brickGroup if 11 <= (b.rect.left-3)//24 <= 14 and 23 <= (b.rect.top-3)//24 <= 25])
-        if new_wall_count < old_wall_count:
-            reward -= 2
-        
-        # 3. If the player's tank is destroyed, return a negative reward.
-        if self.myTank_T1.life < old_state[0][2] * 3:
-            reward -= 3
+        # 3. If the player's tank is destroyed, add a negative reward
+        if self.myTank_T1.life < old_state[0][2]:
+            reward -= 50
 
-        # 4. If the player changes direction more than 4 times in a short period, return a negative reward.
-        if not hasattr(self, "recent_dirs"):
-            self.recent_dirs = deque(maxlen=10)  # record the last 10 directions
-        dir_tuple = (self.myTank_T1.dir_x, self.myTank_T1.dir_y)
-        self.recent_dirs.append(dir_tuple)
-
-        # count the number of direction changes
-        dir_changes = 0
-        last_dir = self.recent_dirs[0]
-        for d in list(self.recent_dirs)[1:]:
-            if d != last_dir:
-                dir_changes += 1
-                last_dir = d
-        # if the player changes direction less than 2 times, return a small positive reward
-        if dir_changes <= 2: 
-            reward += 0.05
-        
-        # 5. If the agent does not move for a long time, return a negative reward.
-        if not hasattr(self, "recent_positions"):
-            from collections import deque
-            self.recent_positions = deque(maxlen=30)
-        px, py = new_state[0][0], new_state[0][1]
-        self.recent_positions.append((round(px, 2), round(py, 2)))
-        if len(self.recent_positions) == 30:
-            unique_pos = len(set(self.recent_positions))
-            if unique_pos <= 3: 
-                reward -= 3
-
-        # 5. If the enemy tank is destroyed, return a positive reward.
-        old_enemy_count = sum([1 for i in range(3, len(old_state[0]), 3) if old_state[0][i+2] > 0])
-        new_enemy_count = sum([1 for i in range(3, len(new_state[0]), 3) if new_state[0][i+2] > 0])
+        # 4. If the enemy tank is destroyed, add a positive reward.
+        old_enemy_count = sum([old_state[0][i+2] for i in range(3, len(old_state[0]), 3) if old_state[0][i+2] > 0])
+        new_enemy_count = sum([new_state[0][i+2] for i in range(3, len(new_state[0]), 3) if new_state[0][i+2] > 0])
         if new_enemy_count < old_enemy_count:
             reward += 20
 
-        # 6. Encourage the player to move towards the enemy tanks
-        px, py = new_state[0][0], new_state[0][1]
-        min_dist = float('inf')
+        # 5. If the player moves closer to the enemy, add a small positive reward
+        px_new, py_new = new_state[0][0], new_state[0][1]
+        min_dist_new = float('inf')
         for i in range(3, len(new_state[0]), 3):
             ex, ey, elife = new_state[0][i], new_state[0][i+1], new_state[0][i+2]
             if elife > 0:
-                dist = abs(px - ex) + abs(py - ey)
-                if dist < min_dist:
-                    min_dist = dist
-        # the closer the enemy tank, the higher the reward
-        # Normalize the distance to [0, 1] so the reward won't be too large
-        if min_dist < float('inf'):
-            reward += 1.0/(min_dist+1)
+                dist = abs(px_new - ex) + abs(py_new - ey)
+                if dist < min_dist_new:
+                    min_dist_new = dist
+
+        px_old, py_old = old_state[0][0], old_state[0][1]
+        min_dist_old = float('inf')
+        for i in range(3, len(old_state[0]), 3):
+            ex, ey, elife = old_state[0][i], old_state[0][i+1], old_state[0][i+2]
+            if elife > 0:
+                dist = abs(px_old - ex) + abs(py_old - ey)
+                if dist < min_dist_old:
+                    min_dist_old = dist
+
+        # make sure the agent is moveing
+        if min_dist_new < min_dist_old and (px_new != px_old or py_new != py_old):
+            reward += 0.05
             
-        if hasattr(self, "last_action") and self.last_action == 4:
-            px, py = self.myTank_T1.rect.left, self.myTank_T1.rect.top
-            dir_x, dir_y = self.myTank_T1.dir_x, self.myTank_T1.dir_y
-            found_enemy_on_line = False
-            for enemy in self.allEnemyGroup:
-                ex, ey = enemy.rect.left, enemy.rect.top
-                if dir_y == 0 and py == ey:
-                    if (dir_x > 0 and ex > px) or (dir_x < 0 and ex < px):
-                        found_enemy_on_line = True
-                        break
-                if dir_x == 0 and px == ex:
-                    if (dir_y > 0 and ey > py) or (dir_y < 0 and ey < py):
-                        found_enemy_on_line = True
-                        break
-            if found_enemy_on_line:
-                reward += 1.0 
-
-        # 7. If the player moves to a new grid, return a small positive reward.
-        if not hasattr(self, "visited_grids"):
-            self.visited_grids = set()
-        px, py = new_state[0][0], new_state[0][1]
-        grid_x, grid_y = int(px * 10), int(py * 10)  # 10x10网格
-        grid = (grid_x, grid_y)
-        if grid not in self.visited_grids:
-            reward += 0.3
-            self.visited_grids.add(grid)
-        
-        # 8. If the player was blocked by walls, encourage them to move in the opposite direction
-        px = int(self.myTank_T1.rect.left)
-        py = int(self.myTank_T1.rect.top)
-        tank_w, tank_h = self.myTank_T1.rect.width, self.myTank_T1.rect.height
-
-        # check if the player is blocked by walls
-        left_blocked = (px <= 3) or any(b.rect.colliderect(px-1, py, 1, tank_h) for b in self.bgMap.brickGroup)
-        right_blocked = (px + tank_w >= 630) or any(b.rect.colliderect(px+tank_w, py, 1, tank_h) for b in self.bgMap.brickGroup)
-        top_blocked = (py <= 3) or any(b.rect.colliderect(px, py-1, tank_w, 1) for b in self.bgMap.brickGroup)
-        bottom_blocked = (py + tank_h >= 630) or any(b.rect.colliderect(px, py+tank_h, tank_w, 1) for b in self.bgMap.brickGroup)
-
-        # if left_blocked and right_blocked, encourage the player to move up or down
-        if left_blocked and right_blocked:
-            if self.myTank_T1.dir_y != 0:
-                reward += 0.5
-        # if top_blocked and bottom_blocked, encourage the player to move left or right
-        if top_blocked and bottom_blocked:
-            if self.myTank_T1.dir_x != 0:
-                reward += 0.5
-
-        # 9. If the player survives, return a small positive reward.
-        reward += 0.05
-
         return reward
-    
+
     # We create a function similar to game_running and game_running_singled_out func to let AI play the game 
     def game_running_ai_play(self, agent, enemy_num=1, isEndless=False):
         """
@@ -1407,41 +1336,16 @@ class Game:
         self.delay = 100
 
         self.isEndless = isEndless
-        map_num = [
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        ]
         
-        # let AI play the 26-35 levels of the game
-        # checkpoint = random.randint(26, 35)
-        checkpoint = 2
+        map_num = [
+            [0 for _ in range(12)] for _ in range(16)
+        ]
+
+        # let AI play the 1-5 levels of the game
+        checkpoint = random.randint(1, 5)
         self.bgMap.checkpoint(checkpoint, map_num)
         for i in range(1, enemy_num + 1):
-            enemy = enemyTank.EnemyTank(i)
+            enemy = enemyTank.EnemyTank(i, kind=1)
             self.allTankGroup.add(enemy)
             self.allEnemyGroup.add(enemy)
             if enemy.isred:
@@ -1453,7 +1357,7 @@ class Game:
 
         self.myTank_T2.life = 0
         self.myTank_T1.life = 3
-        self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 24 * 24
+        self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 15 * 24
         self.overGameLoss = False
         self.overGameWin = False
         self.enemyCouldMove = True
@@ -1504,10 +1408,11 @@ class Game:
         print("AI Play End")
 
     # this function is used to train the AI agent
-    def game_running_ai_trainning(self, agent, episodes=50, batch_size=32, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
-        episode_rewards = []
-
+    def game_running_ai_trainning(self, agent, episodes=50, batch_size=8, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
+        
+        rule_prob = 0.5
         for episode in range(episodes):
+            rule_prob = rule_prob*0.99
             print(f"\n=== Episode {episode + 1}/{episodes} ===")
             start_time = time.time() 
 
@@ -1534,45 +1439,18 @@ class Game:
             self.invincible_T2 = 0
             self.iron_time = 0
             self.delay = 100
-            self.visited_grids = set()
-            self.recent_dirs = deque(maxlen=10)
 
             self.isEndless = isEndless
             
             map_num = [
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                [0 for _ in range(12)] for _ in range(16)
             ]
             
-            # checkpoint = random.randint(1, 35)
-            checkpoint = 2
+            # checkpoint = random.randint(1, 5)
+            checkpoint = 1
             self.bgMap.checkpoint(checkpoint, map_num)
             for i in range(1, enemy_num + 1):
-                enemy = enemyTank.EnemyTank(i)
+                enemy = enemyTank.EnemyTank(i, kind=1)
                 self.allTankGroup.add(enemy)
                 self.allEnemyGroup.add(enemy)
                 if enemy.isred:
@@ -1583,7 +1461,7 @@ class Game:
                     self.otherEnemyGroup.add(enemy)
             self.myTank_T2.life = 0
             self.myTank_T1.life = 3
-            self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 24 * 24
+            self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 14 * 24
             self.overGameLoss = False
             self.overGameWin = False
             self.enemyCouldMove = True
@@ -1602,7 +1480,10 @@ class Game:
 
             state = self.get_current_state()
             while not done:
-                action = agent.act(state)
+                if np.random.rand() < rule_prob: 
+                    action = self.rule_based_act() 
+                else:
+                    action = agent.act(state)
                 next_state, reward, done, obs = self.get_successor_state(action)
 
                 agent.remember(state, action, reward, next_state, done)
@@ -1610,15 +1491,20 @@ class Game:
 
                 train_step += 1
                 step_count += 1
-                if train_step % 1 == 0:
+                # I changed to train the agent every 10 step
+                if train_step % 10 == 0:
                     agent.replay(batch_size)
+
+                if train_step % 100 == 0:
+                    agent.update_target_model()
 
                 total_reward += reward
                 
                 if show_training:
                     self.render_game_screen()
 
-                self.clock.tick(60)
+                # I removed the delay and clock.tick(60) to speed up the training process
+                # self.clock.tick(60)
                 
                 if step_count >= max_steps:
                     print("Episode terminated due to step limit.")
@@ -1626,32 +1512,85 @@ class Game:
             
             if agent.epsilon > agent.epsilon_min:
                 agent.epsilon *= agent.epsilon_decay
+            agent.replay(batch_size)
+
             end_time = time.time() 
             elapsed = end_time - start_time
             print(f"Episode {episode + 1} finished. Total reward: {total_reward}. Time: {elapsed:.2f} seconds")
-            episode_rewards.append(total_reward)
             agent.save(file_name)
             print("Epsilon:", agent.epsilon)
+            print("rule_prob:", rule_prob)
             print("Model saved.")
+            
+            with open("tank_dqn_replay.pkl", "wb") as f:
+                pickle.dump(agent.memory, f)
+            print("Replay buffer saved.")
+
 
         agent.save(file_name)
         print("Final model saved.")
-        self.plot_rewards(episode_rewards)
 
-    def plot_rewards(self, rewards):
-        plt.figure(figsize=(10, 5))
-        plt.plot(rewards, label='Reward per Episode')
-        plt.xlabel('Episode')
-        plt.ylabel('Total Reward')
-        plt.title('Training Progress: Reward Curve')
-        plt.legend()
-        plt.grid()
-        plt.show()
+    def rule_based_act(self):
 
+        # 1. Try to shoot if any enemy is on same row or column
+        px, py = self.myTank_T1.rect.left, self.myTank_T1.rect.top
+        for enemy in self.allEnemyGroup:
+            ex, ey = enemy.rect.left, enemy.rect.top
+            if abs(px - ex) < 12 or abs(py - ey) < 12:
+                blocked = False
+                if abs(px - ex) < 12:
+                    y_range = range(min(py, ey) + 24, max(py, ey), 24)
+                    for y in y_range:
+                        for block in list(self.bgMap.brickGroup) + list(self.bgMap.ironGroup):
+                            if abs(block.rect.left - px) < 12 and abs(block.rect.top - y) < 12:
+                                blocked = True
+                                break
+                        if blocked:
+                            break
+                    if not blocked:
+                        if ey < py and (self.myTank_T1.dir_x, self.myTank_T1.dir_y) != (0, -1):
+                            return 0
+                        elif ey > py and (self.myTank_T1.dir_x, self.myTank_T1.dir_y) != (0, 1):
+                            return 1
+                        else:
+                            return 4
+                else:
+                    x_range = range(min(px, ex) + 24, max(px, ex), 24)
+                    for x in x_range:
+                        for block in list(self.bgMap.brickGroup) + list(self.bgMap.ironGroup):
+                            if abs(block.rect.left - x) < 12 and abs(block.rect.top - py) < 12:
+                                blocked = True
+                                break
+                        if blocked:
+                            break
+                    if not blocked:
+                        if ex < px and (self.myTank_T1.dir_x, self.myTank_T1.dir_y) != (-1, 0):
+                            return 2
+                        elif ex > px and (self.myTank_T1.dir_x, self.myTank_T1.dir_y) != (1, 0):
+                            return 3
+                        else:
+                            return 4
+
+        # 2. Move towards the nearest enemy
+        min_dist = float('inf')
+        target_dir = 4  # default = fire
+
+        for enemy in self.allEnemyGroup:
+            ex, ey = enemy.rect.left, enemy.rect.top
+            dist = abs(px - ex) + abs(py - ey)
+            if dist < min_dist:
+                min_dist = dist
+                if abs(px - ex) > abs(py - ey):
+                    target_dir = 2 if ex < px else 3
+                else:
+                    target_dir = 0 if ey < py else 1 
+        
+        return target_dir
+    
     # the game screen rendering function is pulled out from the game_running function
     def render_game_screen(self):
-        self.screen.blit(self.background_image, (0, 0))
-        self.screen.blit(self.background_image_level_mode, (630, 0))
+        self.screen.blit(self.background_image, (-10, -10))
+        self.screen.blit(self.background_image_level_mode, (294, -80))
         for each in self.bgMap.brickGroup:
             self.screen.blit(each.image, each.rect)
         for each in self.bgMap.ironGroup:
@@ -1664,6 +1603,7 @@ class Game:
             self.screen.blit(each.image, each.rect)
         for each in self.bgMap.treeGroup:
             self.screen.blit(each.image, each.rect)
+
         for each in self.bulletBoomGroup:
             if each.times > 0:
                 each.times -= 1
@@ -1673,6 +1613,21 @@ class Game:
                 self.bulletBoomGroup.remove(each)
         self.props_section()
         self.tank_display_section()
+        
+        # render the life icons for the player's tank
+        for i in range(self.myTank_T1.life):
+            x = 350 + i * 15
+            y = 300 + 5  
+            self.screen.blit(self.heart_icon, (x, y))
+
+        # render the life icons for the enemy tanks
+        for i in range(self.remaining_enemy):
+            x = 320 + i * 15
+            y = 50
+
+            self.screen.blit(self.enemy_icon, (x, y))
+        pygame.display.flip()
+
         pygame.display.flip()
 
     # update the game state based on the action taken

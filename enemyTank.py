@@ -119,13 +119,13 @@ class EnemyTank(pygame.sprite.Sprite):
         if self.rect.top < 3:
             self.rect = self.rect.move(self.speed * 0, self.speed * 1)
             self.dir_x, self.dir_y = random.choice(([0, 1], [0, -1], [1, 0], [-1, 0]))
-        elif self.rect.bottom > 630 - 3:
+        elif self.rect.bottom > 390 - 3:
             self.rect = self.rect.move(self.speed * 0, self.speed * -1)
             self.dir_x, self.dir_y = random.choice(([0, 1], [0, -1], [1, 0], [-1, 0]))
         elif self.rect.left < 3:
             self.rect = self.rect.move(self.speed * 1, self.speed * 0)
             self.dir_x, self.dir_y = random.choice(([0, 1], [0, -1], [1, 0], [-1, 0]))
-        elif self.rect.right > 630 - 3:
+        elif self.rect.right > 294 - 3:
             self.rect = self.rect.move(self.speed * -1, self.speed * 0)
             self.dir_x, self.dir_y = random.choice(([0, 1], [0, -1], [1, 0], [-1, 0]))
         # 碰撞墙体 和坦克 和河流 （随机选择方向）
