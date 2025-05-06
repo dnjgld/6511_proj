@@ -1218,8 +1218,10 @@ class Game:
 
 
     # function to get the current state of the game
-    def get_current_state(self):
+    def get_current_state(self,checkpoint, enemy_num):
+        map_id = checkpoint
         state = [
+            map_id,
             self.myTank_T1.rect.left / 294,
             self.myTank_T1.rect.top / 390,
             self.myTank_T1.life,
@@ -1230,24 +1232,24 @@ class Game:
                 enemy.rect.top / 390,
                 enemy.life
             ])
-        while len(state) < 3 + 3 * self.enemyNumber:
+        while len(state) < 4 + 3 * enemy_num:
             state.append(0)
         # print("state:", state)
         return np.array(state, dtype=np.float32).reshape(1, -1)
     
     # function to get successor state after applying the action
     # Returns a new state object, reward, done flag, and observation
-    def get_successor_state(self, action):
+    def get_successor_state(self, action, checkpoint, enemy_num):
 
         # Create a copy of the current state
-        old_state = self.get_current_state()
+        old_state = self.get_current_state(checkpoint, enemy_num)
         self.execute_action(action)
         self.event_section()
         self.bullet_section()
         self.props_section()
         self.tank_display_section()
 
-        new_state = self.get_current_state()
+        new_state = self.get_current_state(checkpoint, enemy_num)
         reward = self.reward_calculation(old_state, new_state)
         done = (self.remaining_enemy == 0) or self.overGameLoss or (self.myTank_T1.life <= 0)
         observation = new_state
@@ -1273,24 +1275,24 @@ class Game:
             reward -= 50
 
         # 4. If the enemy tank is destroyed, add a positive reward.
-        old_enemy_count = sum([old_state[0][i+2] for i in range(3, len(old_state[0]), 3) if old_state[0][i+2] > 0])
-        new_enemy_count = sum([new_state[0][i+2] for i in range(3, len(new_state[0]), 3) if new_state[0][i+2] > 0])
+        old_enemy_count = sum([old_state[0][i] > 0 for i in range(6, len(old_state[0]), 3)])
+        new_enemy_count = sum([new_state[0][i] > 0 for i in range(6, len(new_state[0]), 3)])
         if new_enemy_count < old_enemy_count:
             reward += 20
 
         # 5. If the player moves closer to the enemy, add a small positive reward
-        px_new, py_new = new_state[0][0], new_state[0][1]
+        px_new, py_new = new_state[0][1], new_state[0][2]
         min_dist_new = float('inf')
-        for i in range(3, len(new_state[0]), 3):
+        for i in range(4, len(new_state[0]), 3):
             ex, ey, elife = new_state[0][i], new_state[0][i+1], new_state[0][i+2]
             if elife > 0:
                 dist = abs(px_new - ex) + abs(py_new - ey)
                 if dist < min_dist_new:
                     min_dist_new = dist
 
-        px_old, py_old = old_state[0][0], old_state[0][1]
+        px_old, py_old = old_state[0][1], old_state[0][2]
         min_dist_old = float('inf')
-        for i in range(3, len(old_state[0]), 3):
+        for i in range(4, len(old_state[0]), 3):
             ex, ey, elife = old_state[0][i], old_state[0][i+1], old_state[0][i+2]
             if elife > 0:
                 dist = abs(px_old - ex) + abs(py_old - ey)
@@ -1343,7 +1345,7 @@ class Game:
 
         # let AI play the 1-5 levels of the game
         checkpoint = random.randint(1, 5)
-        checkpoint = 1
+        # checkpoint = 1
         self.bgMap.checkpoint(checkpoint, map_num)
         for i in range(1, enemy_num + 1):
             enemy = enemyTank.EnemyTank(i, kind=1)
@@ -1374,7 +1376,7 @@ class Game:
             self.event_section()
 
             # AI action
-            state = self.get_current_state()
+            state = self.get_current_state(checkpoint, enemy_num)
             state = np.array(state, dtype=np.float32).reshape(1, -1)
             action = agent.act(state)
 
@@ -1447,8 +1449,8 @@ class Game:
                 [0 for _ in range(12)] for _ in range(16)
             ]
             
-            # checkpoint = random.randint(1, 5)
-            checkpoint = 1
+            checkpoint = random.randint(1, 5)
+            # checkpoint = 1
             self.bgMap.checkpoint(checkpoint, map_num)
             for i in range(1, enemy_num + 1):
                 enemy = enemyTank.EnemyTank(i, kind=1)
@@ -1479,13 +1481,13 @@ class Game:
             max_steps = 1000
             step_count = 0
 
-            state = self.get_current_state()
+            state = self.get_current_state(checkpoint, enemy_num)
             while not done:
                 if np.random.rand() < rule_prob: 
                     action = self.rule_based_act() 
                 else:
                     action = agent.act(state)
-                next_state, reward, done, obs = self.get_successor_state(action)
+                next_state, reward, done, obs = self.get_successor_state(action, checkpoint, enemy_num)
 
                 agent.remember(state, action, reward, next_state, done)
                 state = next_state

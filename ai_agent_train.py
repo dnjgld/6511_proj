@@ -4,14 +4,14 @@ import os
 
 game = Game()
 enemy_num = 1
-state_size = 3*(enemy_num+1)
+state_size = 3*(enemy_num+1)+1
 agent = TankAgent(state_size=state_size, action_size=5)
 
 file_name = "tank_dqn.keras"
 replay_file_name = "tank_dqn_replay.pkl"
 
 if os.path.exists(file_name):
-    agent.epsilon = 0.4
+    agent.epsilon = 0.7
     agent.load(file_name)
     print("loaded model weights: " + file_name)
     if os.path.exists(replay_file_name):
