@@ -11,7 +11,7 @@ file_name = "tank_dqn.keras"
 replay_file_name = "tank_dqn_replay.pkl"
 
 if os.path.exists(file_name):
-    agent.epsilon = 1.0
+    agent.epsilon = 0.4
     agent.load(file_name)
     print("loaded model weights: " + file_name)
     if os.path.exists(replay_file_name):

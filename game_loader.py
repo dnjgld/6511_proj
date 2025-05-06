@@ -667,7 +667,7 @@ class Game:
                         else:
                             if self.isSoundEffect:
                                 self.bang_sound.play()
-                            self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 24 * 24
+                            self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 5 * 24, 3 + 11 * 24
                             if not self.isEndless:
                                 self.myTank_T1.life -= 1
                             each.bullet.life = False
@@ -1232,7 +1232,7 @@ class Game:
             ])
         while len(state) < 3 + 3 * self.enemyNumber:
             state.append(0)
-        print("state:", state)
+        # print("state:", state)
         return np.array(state, dtype=np.float32).reshape(1, -1)
     
     # function to get successor state after applying the action
@@ -1343,6 +1343,7 @@ class Game:
 
         # let AI play the 1-5 levels of the game
         checkpoint = random.randint(1, 5)
+        checkpoint = 1
         self.bgMap.checkpoint(checkpoint, map_num)
         for i in range(1, enemy_num + 1):
             enemy = enemyTank.EnemyTank(i, kind=1)
@@ -1357,7 +1358,7 @@ class Game:
 
         self.myTank_T2.life = 0
         self.myTank_T1.life = 3
-        self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 15 * 24
+        self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 5 * 24, 3 + 11 * 24
         self.overGameLoss = False
         self.overGameWin = False
         self.enemyCouldMove = True
@@ -1461,7 +1462,7 @@ class Game:
                     self.otherEnemyGroup.add(enemy)
             self.myTank_T2.life = 0
             self.myTank_T1.life = 3
-            self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 14 * 24
+            self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 5 * 24, 3 + 11 * 24
             self.overGameLoss = False
             self.overGameWin = False
             self.enemyCouldMove = True
