@@ -7,11 +7,18 @@ enemy_num = 1
 state_size = 3*(enemy_num+1)
 agent = TankAgent(state_size=state_size, action_size=5)
 
-file_name = "tank_dqn_6.keras"
+file_name = "tank_dqn.keras"
+replay_file_name = "tank_dqn_replay.pkl"
 
+# Load the model weights and replay buffer if they exist
 if os.path.exists(file_name):
+    # if exists, set epsilon to 0.3 for re-training
+    agent.epsilon = 0.3
     agent.load(file_name)
     print("loaded model weights: " + file_name)
+    if os.path.exists(replay_file_name):
+        agent.load_replay_buffer(replay_file_name)
+        print("loaded replay buffer: " + replay_file_name)
     # agent.model.summary()
 
 game.game_running_ai_trainning(agent, episodes = 1000, enemy_num=enemy_num, show_training=True, file_name=file_name)

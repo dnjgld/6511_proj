@@ -5,9 +5,10 @@ import os
 game = Game()
 enemy_num = 1
 state_size = 3*(enemy_num+1)
-agent = TankAgent(state_size=state_size, action_size=5, epsilon=0.01)
+# Set epsilon to 0.0 for complete AI play (no exploration)
+agent = TankAgent(state_size=state_size, action_size=5, epsilon=0.0)
 
-file_name = "tank_dqn_6.keras"
+file_name = "tank_dqn.keras"
 if os.path.exists(file_name):
     agent.load(file_name)
     print("loaded model weights: " + file_name)
