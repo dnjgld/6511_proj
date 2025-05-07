@@ -1423,6 +1423,7 @@ class Game:
 
         print("\n=== AI Training Start ===")
         # we use a rule based approach to fasten the training process
+        # But the probability of using the rule based approach will decrease over time till less than 0.1
         rule_prob = 0.5
         for episode in range(episodes):
             if rule_prob < 0.1:
