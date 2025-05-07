@@ -1,4 +1,6 @@
-# Original resource: https://github.com/keon/deep-q-learning/blob/master/dqn_batch.py
+# The referenced resource: 
+# https://github.com/keon/deep-q-learning/blob/master/dqn_batch.py (DQN)
+# https://github.com/flyyufelix/VizDoom-Keras-RL/blob/4fc27ce3d400eba5422d39e2fad565d0503a6149/ddqn.py (double DQN)
 
 import numpy as np
 import random
@@ -6,7 +8,7 @@ from collections import deque
 from tensorflow.keras import layers, models, optimizers
 import pickle
 
-# a agent build on DQN
+# an agent build on DQN
 class TankAgent:
     def __init__(self, state_size, action_size, epsilon = 1.0):
         self.state_size = state_size
@@ -24,15 +26,12 @@ class TankAgent:
     def _build_model(self):
         model = models.Sequential()
         model.add(layers.Input(shape=(self.state_size,)))
-        # we enlarge the model to 128 neurons in two laters
         model.add(layers.Dense(128, activation='relu'))
         model.add(layers.Dense(128, activation='relu'))
         model.add(layers.Dense(self.action_size, activation='linear'))
         model.compile(loss='mse', optimizer=optimizers.Adam(learning_rate=self.learning_rate))
         return model
 
-    # update the target model with the weights of the main model
-    # this is from double DQN
     def update_target_model(self):
         self.target_model.set_weights(self.model.get_weights())
 

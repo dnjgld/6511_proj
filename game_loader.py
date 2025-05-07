@@ -12,7 +12,9 @@ import random
 import time
 import pickle
 import numpy as np
-from collections import deque
+# Please jump to line 1215 to see the function for the AI agent
+#################################
+
 
 """
 修改时间：2021.12.15
@@ -1212,12 +1214,14 @@ class Game:
 
 ##############################################################
 ##############################################################
-# All following code are written by us
-# The code is not finished yet
+# 
+# Following code are written by us
+#
 ##############################################################
 ##############################################################
  
     # function to get the current state of the game
+    # state: [player_x, player_y, player_life, enemy1_x, enemy1_y, enemy1_life, ...]
     def get_current_state(self, enemy_num):
         state = [
             self.myTank_T1.rect.left / 630,
@@ -1236,6 +1240,7 @@ class Game:
     
     # function to get successor state after applying the action
     # Returns a new state object, reward, done flag, and observation
+    # Reference: https://gist.github.com/SeanMirchi/46c88e82fdf579a5e3bbfa0eb0a2277d
     def get_successor_state(self, action, enemy_num):
 
         # Create a copy of the current state
@@ -1256,16 +1261,14 @@ class Game:
     # function to calculate the reward based on the state transition
     def reward_calculation(self, old_state, new_state):
         reward = 0
-        # test reward function
 
         # 1. If the game is over, return a large negative reward.
         if self.overGameLoss:
             return -100
         
         # 2. If the player wins the game, return a large positive reward. 
-        # (I am considering giving a value according to the time taken to win the game)
         if self.remaining_enemy == 0 or getattr(self, "overGameWin", False):
-            return 500 
+            return 300 
         
         # 3. If the player's tank is destroyed, add a negative reward
         if self.myTank_T1.life < old_state[0][2]:
@@ -1303,7 +1306,7 @@ class Game:
         return reward
     
     # We create a function similar to game_running and game_running_singled_out func to let AI play the game 
-    def game_running_ai_play(self, agent, enemy_num=1, isEndless=False):
+    def game_running_ai_play(self, agent, enemy_num=1, checkpoint=1, isEndless=False):
         print("\n=== AI Play Start ===")
 
         # initialize game state
@@ -1364,11 +1367,12 @@ class Game:
         # let AI play the 1-35 levels of the game
         # checkpoint = random.randint(1, 35)
 
-        # Here we just set the checkpoint to 1
-        checkpoint = 1
+        # Here we just set the checkpoint from given parameter
+        checkpoint = checkpoint
         self.bgMap.checkpoint(checkpoint, map_num)
+
         for i in range(1, enemy_num + 1):
-            enemy = enemyTank.EnemyTank(i, kind=1)
+            enemy = enemyTank.EnemyTank(i, kind = 1)
             self.allTankGroup.add(enemy)
             self.allEnemyGroup.add(enemy)
             if enemy.isred:
@@ -1398,7 +1402,6 @@ class Game:
             # AI action
             state = self.get_current_state(enemy_num)
             state = np.array(state, dtype=np.float32).reshape(1, -1)
-            
             action = agent.act(state)
 
             self.execute_action(action)
@@ -1421,11 +1424,17 @@ class Game:
         print("AI Play End")
 
     # this function is used to train the AI agent
-    def game_running_ai_trainning(self, agent, episodes=500, batch_size=8, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
+    def game_running_ai_trainning(self, agent, episodes=500, batch_size=8, enemy_num=1, checkpoint=1, isEndless=False, show_training=True, file_name="default.keras"):
 
-        rule_prob = 0.3
+        print("\n=== AI Training Start ===")
+        # we use a rule based approach to fasten the training process
+        # But the probability of using the rule based approach will decrease over time till less than 0.1
+        rule_prob = 0.5
         for episode in range(episodes):
-            rule_prob = rule_prob*0.995
+            if rule_prob < 0.1:
+                rule_prob = rule_prob*0.9
+
+            # print the progress of training
             print(f"\n=== Episode {episode + 1}/{episodes} ===")
             start_time = time.time() 
 
@@ -1452,8 +1461,6 @@ class Game:
             self.invincible_T2 = 0
             self.iron_time = 0
             self.delay = 100
-            self.visited_grids = set()
-            self.recent_dirs = deque(maxlen=10)
 
             self.isEndless = isEndless
             
@@ -1487,10 +1494,11 @@ class Game:
             ]
             
             # checkpoint = random.randint(1, 35)
-
-            # Here I just set the checkpoint to 1
-            checkpoint = 1
+            
+            # Here I just set the checkpoint from given parameter
+            checkpoint = checkpoint
             self.bgMap.checkpoint(checkpoint, map_num)
+
             for i in range(1, enemy_num + 1):
                 enemy = enemyTank.EnemyTank(i, kind=1)
                 self.allTankGroup.add(enemy)
@@ -1501,7 +1509,6 @@ class Game:
                     self.greenEnemyGroup.add(enemy)
                 else:
                     self.otherEnemyGroup.add(enemy)
-
             self.myTank_T2.life = 0
             self.myTank_T1.life = 3
             self.myTank_T1.rect.left, self.myTank_T1.rect.top = 3 + 8 * 24, 3 + 24 * 24
@@ -1514,68 +1521,70 @@ class Game:
             self.invincible_T2 = 0
             self.iron_time = 0
 
-            total_reward = 0
-            done = False
-            train_step = 0
+            # set the maximum number of steps so each episode won't take too much time
+            max_steps = 1000
 
-            max_steps = 1200
+            # initialze the training variables
+            total_reward = 0
             step_count = 0
+            done = False
 
             state = self.get_current_state(enemy_num)
+            # game not over
             while not done:
-                if np.random.rand() < rule_prob: 
-                    action = self.rule_based_act() 
-                else:
-                    action = agent.act(state)
-                next_state, reward, done, obs = self.get_successor_state(action, enemy_num)
+                action = agent.act(state)
+                next_state, reward, done, _ = self.get_successor_state(action, enemy_num)
 
                 agent.remember(state, action, reward, next_state, done)
                 state = next_state
 
-                train_step += 1
                 step_count += 1
-                # I changed to train the agent every 10 step
-                if train_step % 10 == 0:
+
+                # I changed to train the agent every 10 step to speed up the training process
+                if step_count % 10 == 0:
                     agent.replay(batch_size)
 
-                if train_step % 100 == 0:
+                # update the target model every 100 steps
+                if step_count % 100 == 0:
                     agent.update_target_model()
 
+                # update the total reward
                 total_reward += reward
                 
+                # choose to render the game screen or not
                 if show_training:
                     self.render_game_screen()
 
                 # I removed the delay and clock.tick(60) to speed up the training process
                 # self.clock.tick(60)
                 
+                # if steps exceed the maximum steps, terminate the episode
                 if step_count >= max_steps:
                     print("Episode terminated due to step limit.")
                     break
             
+            # train the remaining steps (<10 steps)
+            agent.replay(batch_size)
+            # update the epsilon
             if agent.epsilon > agent.epsilon_min:
                 agent.epsilon *= agent.epsilon_decay
-            agent.replay(batch_size)
 
             end_time = time.time() 
             elapsed = end_time - start_time
             print(f"Episode {episode + 1} finished. Total reward: {total_reward}. Time: {elapsed:.2f} seconds")
-            # save the model every episode
             agent.save(file_name)
             print("Epsilon:", agent.epsilon)
-            print("rule_prob:", rule_prob)
             print("Model saved.")
             
-            # save the replay buffer every 10 episodes
-            if (episode + 1) % 10 == 0:
-                with open("tank_dqn_replay.pkl", "wb") as f:
-                    pickle.dump(agent.memory, f)
-                print("Replay buffer saved.")
+            with open("tank_dqn_replay.pkl", "wb") as f:
+                pickle.dump(agent.memory, f)
+            print("Replay buffer saved.")
 
-        # save the final model
+
         agent.save(file_name)
         print("Final model saved.")
 
+    # Teach the ai agent basic actions to play the game so it don't need to learn from too many random actions;
     def rule_based_act(self):
 
         # 1. Try to shoot if any enemy is on same row or column
