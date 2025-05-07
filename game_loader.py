@@ -12,6 +12,10 @@ import random
 import time
 import pickle
 import numpy as np
+# Please jump to line 1215 to see the function for the AI agent
+#################################
+
+
 """
 修改时间：2021.12.15
 修改人：2019051604048 詹孝东
@@ -1236,6 +1240,7 @@ class Game:
     
     # function to get successor state after applying the action
     # Returns a new state object, reward, done flag, and observation
+    # Reference: https://gist.github.com/SeanMirchi/46c88e82fdf579a5e3bbfa0eb0a2277d
     def get_successor_state(self, action, enemy_num):
 
         # Create a copy of the current state
