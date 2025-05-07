@@ -10,9 +10,8 @@ import special_effects
 #################################
 import random
 import time
+import pickle
 import numpy as np
-from collections import deque
-
 """
 修改时间：2021.12.15
 修改人：2019051604048 詹孝东
@@ -1211,13 +1210,15 @@ class Game:
 
 ##############################################################
 ##############################################################
-# All following code are written by us
-# The code is not finished yet
+# 
+# Following code are written by us
+#
 ##############################################################
 ##############################################################
  
     # function to get the current state of the game
-    def get_current_state(self):
+    # state: [player_x, player_y, player_life, enemy1_x, enemy1_y, enemy1_life, ...]
+    def get_current_state(self, enemy_num):
         state = [
             self.myTank_T1.rect.left / 630,
             self.myTank_T1.rect.top / 630,
@@ -1229,23 +1230,23 @@ class Game:
                 enemy.rect.top / 630,
                 enemy.life
             ])
-        while len(state) < 3 + 3 * self.enemyNumber:
+        while len(state) < 3 + 3 * enemy_num:
             state.append(0)
         return np.array(state, dtype=np.float32).reshape(1, -1)
     
     # function to get successor state after applying the action
     # Returns a new state object, reward, done flag, and observation
-    def get_successor_state(self, action):
+    def get_successor_state(self, action, enemy_num):
 
         # Create a copy of the current state
-        old_state = self.get_current_state()
+        old_state = self.get_current_state(enemy_num)
         self.execute_action(action)
         self.event_section()
         self.bullet_section()
         self.props_section()
         self.tank_display_section()
 
-        new_state = self.get_current_state()
+        new_state = self.get_current_state(enemy_num)
         reward = self.reward_calculation(old_state, new_state)
         done = (self.remaining_enemy == 0) or self.overGameLoss or (self.myTank_T1.life <= 0)
         observation = new_state
@@ -1255,20 +1256,18 @@ class Game:
     # function to calculate the reward based on the state transition
     def reward_calculation(self, old_state, new_state):
         reward = 0
-        # test reward function
 
         # 1. If the game is over, return a large negative reward.
         if self.overGameLoss:
             return -100
         
         # 2. If the player wins the game, return a large positive reward. 
-        # (I am considering giving a value according to the time taken to win the game)
         if self.remaining_enemy == 0 or getattr(self, "overGameWin", False):
-            return 100 
+            return 300 
         
         # 3. If the player's tank is destroyed, add a negative reward
         if self.myTank_T1.life < old_state[0][2]:
-            reward -= 5
+            reward -= 50
 
         # 4. If the enemy tank is destroyed, add a positive reward.
         old_enemy_count = sum([old_state[0][i+2] for i in range(3, len(old_state[0]), 3) if old_state[0][i+2] > 0])
@@ -1302,7 +1301,7 @@ class Game:
         return reward
     
     # We create a function similar to game_running and game_running_singled_out func to let AI play the game 
-    def game_running_ai_play(self, agent, enemy_num=1, isEndless=False):
+    def game_running_ai_play(self, agent, enemy_num=1, checkpoint=1, isEndless=False):
         print("\n=== AI Play Start ===")
 
         # initialize game state
@@ -1360,14 +1359,15 @@ class Game:
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         ]
         
-        # let AI play the 26-35 levels of the game
-        # checkpoint = random.randint(26, 35)
+        # let AI play the 1-35 levels of the game
+        # checkpoint = random.randint(1, 35)
 
-        # Here we just set the checkpoint to 1
-        checkpoint = 1
+        # Here we just set the checkpoint from given parameter
+        checkpoint = checkpoint
         self.bgMap.checkpoint(checkpoint, map_num)
+
         for i in range(1, enemy_num + 1):
-            enemy = enemyTank.EnemyTank(i)
+            enemy = enemyTank.EnemyTank(i, kind = 1)
             self.allTankGroup.add(enemy)
             self.allEnemyGroup.add(enemy)
             if enemy.isred:
@@ -1395,7 +1395,7 @@ class Game:
             self.event_section()
 
             # AI action
-            state = self.get_current_state()
+            state = self.get_current_state(enemy_num)
             state = np.array(state, dtype=np.float32).reshape(1, -1)
             action = agent.act(state)
 
@@ -1419,9 +1419,16 @@ class Game:
         print("AI Play End")
 
     # this function is used to train the AI agent
-    def game_running_ai_trainning(self, agent, episodes=500, batch_size=8, enemy_num=1, isEndless=False, show_training=True, file_name="default.keras"):
+    def game_running_ai_trainning(self, agent, episodes=500, batch_size=8, enemy_num=1, checkpoint=1, isEndless=False, show_training=True, file_name="default.keras"):
 
+        print("\n=== AI Training Start ===")
+        # we use a rule based approach to fasten the training process
+        rule_prob = 0.5
         for episode in range(episodes):
+            if rule_prob < 0.1:
+                rule_prob = rule_prob*0.9
+
+            # print the progress of training
             print(f"\n=== Episode {episode + 1}/{episodes} ===")
             start_time = time.time() 
 
@@ -1448,8 +1455,6 @@ class Game:
             self.invincible_T2 = 0
             self.iron_time = 0
             self.delay = 100
-            self.visited_grids = set()
-            self.recent_dirs = deque(maxlen=10)
 
             self.isEndless = isEndless
             
@@ -1484,11 +1489,12 @@ class Game:
             
             # checkpoint = random.randint(1, 35)
             
-            # Here I just set the checkpoint to 1
-            checkpoint = 1
+            # Here I just set the checkpoint from given parameter
+            checkpoint = checkpoint
             self.bgMap.checkpoint(checkpoint, map_num)
+
             for i in range(1, enemy_num + 1):
-                enemy = enemyTank.EnemyTank(i)
+                enemy = enemyTank.EnemyTank(i, kind=1)
                 self.allTankGroup.add(enemy)
                 self.allEnemyGroup.add(enemy)
                 if enemy.isred:
@@ -1509,39 +1515,51 @@ class Game:
             self.invincible_T2 = 0
             self.iron_time = 0
 
-            total_reward = 0
-            done = False
-            train_step = 0
-
+            # set the maximum number of steps so each episode won't take too much time
             max_steps = 1000
-            step_count = 0
 
-            state = self.get_current_state()
+            # initialze the training variables
+            total_reward = 0
+            step_count = 0
+            done = False
+
+            state = self.get_current_state(enemy_num)
+            # game not over
             while not done:
                 action = agent.act(state)
-                next_state, reward, done, obs = self.get_successor_state(action)
+                next_state, reward, done, _ = self.get_successor_state(action, enemy_num)
 
                 agent.remember(state, action, reward, next_state, done)
                 state = next_state
 
-                train_step += 1
                 step_count += 1
-                # I changed to train the agent every 10 step
-                if train_step % 10 == 0:
+
+                # I changed to train the agent every 10 step to speed up the training process
+                if step_count % 10 == 0:
                     agent.replay(batch_size)
 
+                # update the target model every 100 steps
+                if step_count % 100 == 0:
+                    agent.update_target_model()
+
+                # update the total reward
                 total_reward += reward
                 
+                # choose to render the game screen or not
                 if show_training:
                     self.render_game_screen()
 
                 # I removed the delay and clock.tick(60) to speed up the training process
                 # self.clock.tick(60)
                 
+                # if steps exceed the maximum steps, terminate the episode
                 if step_count >= max_steps:
                     print("Episode terminated due to step limit.")
                     break
             
+            # train the remaining steps (<10 steps)
+            agent.replay(batch_size)
+            # update the epsilon
             if agent.epsilon > agent.epsilon_min:
                 agent.epsilon *= agent.epsilon_decay
 
@@ -1551,10 +1569,73 @@ class Game:
             agent.save(file_name)
             print("Epsilon:", agent.epsilon)
             print("Model saved.")
+            
+            with open("tank_dqn_replay.pkl", "wb") as f:
+                pickle.dump(agent.memory, f)
+            print("Replay buffer saved.")
+
 
         agent.save(file_name)
         print("Final model saved.")
 
+    # Teach the ai agent basic actions to play the game so it don't need to learn from too many random actions;
+    def rule_based_act(self):
+
+        # 1. Try to shoot if any enemy is on same row or column
+        px, py = self.myTank_T1.rect.left, self.myTank_T1.rect.top
+        for enemy in self.allEnemyGroup:
+            ex, ey = enemy.rect.left, enemy.rect.top
+            if abs(px - ex) < 12 or abs(py - ey) < 12:
+                blocked = False
+                if abs(px - ex) < 12:
+                    y_range = range(min(py, ey) + 24, max(py, ey), 24)
+                    for y in y_range:
+                        for block in list(self.bgMap.brickGroup) + list(self.bgMap.ironGroup):
+                            if abs(block.rect.left - px) < 12 and abs(block.rect.top - y) < 12:
+                                blocked = True
+                                break
+                        if blocked:
+                            break
+                    if not blocked:
+                        if ey < py and (self.myTank_T1.dir_x, self.myTank_T1.dir_y) != (0, -1):
+                            return 0
+                        elif ey > py and (self.myTank_T1.dir_x, self.myTank_T1.dir_y) != (0, 1):
+                            return 1
+                        else:
+                            return 4
+                else:
+                    x_range = range(min(px, ex) + 24, max(px, ex), 24)
+                    for x in x_range:
+                        for block in list(self.bgMap.brickGroup) + list(self.bgMap.ironGroup):
+                            if abs(block.rect.left - x) < 12 and abs(block.rect.top - py) < 12:
+                                blocked = True
+                                break
+                        if blocked:
+                            break
+                    if not blocked:
+                        if ex < px and (self.myTank_T1.dir_x, self.myTank_T1.dir_y) != (-1, 0):
+                            return 2
+                        elif ex > px and (self.myTank_T1.dir_x, self.myTank_T1.dir_y) != (1, 0):
+                            return 3
+                        else:
+                            return 4
+
+        # 2. Move towards the nearest enemy
+        min_dist = float('inf')
+        target_dir = 4  # default = fire
+
+        for enemy in self.allEnemyGroup:
+            ex, ey = enemy.rect.left, enemy.rect.top
+            dist = abs(px - ex) + abs(py - ey)
+            if dist < min_dist:
+                min_dist = dist
+                if abs(px - ex) > abs(py - ey):
+                    target_dir = 2 if ex < px else 3
+                else:
+                    target_dir = 0 if ey < py else 1 
+        
+        return target_dir
+                                            
     # the game screen rendering function is pulled out from the game_running function
     def render_game_screen(self):
         # render the background

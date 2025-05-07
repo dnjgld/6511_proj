@@ -42,8 +42,9 @@ class EnemyTank(pygame.sprite.Sprite):
         # 参数:是否携带道具
         self.isred = isred
         # 随机选择是否携带道具（5分之1的概率）
+        # I changed this probability to 0 because the props are not used in our project
         if not None:
-            self.isred = random.choice((True, False, False, False, False))
+            self.isred = random.choice((False, False, False, False, False))
         # 如果携带道具则更新图片
         if self.isred:
             self.tank = self.enemy_x_3
